@@ -8,8 +8,8 @@ class Function(object):
         self.var = self.expression.variables()
         self.var.sort()
 
-    def __call__(self, *x):
-        values = dict((self.var[i], x[i]) for i in range (len(self.var)))
+    def __call__(self, x):
+        values = dict( (self.var[i], x[i]) for i in range(self.dim) )
         return self.expression.evaluate(values)
 
     @property
@@ -22,7 +22,12 @@ if __name__ == '__main__':
     from test_functions import *
 
     fun = Function(ros)
-    print fun.dim
+    x = (1, 2)
+
+    from fmindfp import *
+    x0 = [0.4, -0.6]
+    x = fmindfp(fun, x0, maxiter=10000, disp=True)
+    print(x, x0)
 
 
 #from function import Function
