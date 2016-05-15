@@ -3,14 +3,18 @@ import numpy as np
 from mayavi import mlab
 
 class Figure():
-    def __init__(self, fun, x, x0, x_vec=None):
+    def __init__(self, fun, x, x0, x_vec=None, lr=100):
         self.fdim = fun.dim
         if self.fdim <= 2:
             self.fun = fun
             self.x = x
             self.x0 = x0
+
+            self.lin_range = lr
+
             self.x_range = self.create_range(x[0], x0[0])
             self.y_range = self.create_range(x[1], x0[1])
+
 
 
     def plot_surf(self):
@@ -33,11 +37,11 @@ class Figure():
     def add_abs_value(self, val, scale=1):
         return np.absolute(val)/val * scale + val
 
-    def create_range(self, x, x0, N=500):
+    def create_range(self, x, x0):
         x0 = self.add_abs_value(x0)
         xd = x - x0
         xF = x + xd
-        return np.linspace(start=x0, stop=xF, num=N)
+        return np.linspace(start=x0, stop=xF, num=self.lin_range)
 
 
 if __name__ == '__main__':
@@ -51,7 +55,9 @@ if __name__ == '__main__':
     from fmindfp import fmindfp
     x0 = [0.4, -0.6]
     x = fmindfp(fun, x0, maxiter=10000, disp=True)
-    print x, x0
+
+    x_vec = x[1]
+    x = x[0]
 
     fig = Figure(fun, x, x0)
 

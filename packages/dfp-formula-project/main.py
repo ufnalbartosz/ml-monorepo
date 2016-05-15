@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
     from fmindfp import fmindfp
     x0 = [0.4, -0.6]
-    x = fmindfp(fun, x0, maxiter=10000, disp=True)
+    x = fmindfp(fun, x0, maxiter=10000, disp=False)
 
 
     # rysowanie wykresow 3d w myjavi, plus warstwice i wektor

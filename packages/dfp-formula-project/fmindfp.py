@@ -24,8 +24,8 @@ from scipy.optimize.optimize import (_epsilon, rosen, approx_fprime, _check_unkn
                                      OptimizeResult, _status_message)
 
 def fmindfp(f, x0, fprime=None, args=(), gtol=1e-5, norm=Inf,
-              epsilon=_epsilon, maxiter=None, full_output=0, disp=False,
-              retall=0, callback=None):
+              epsilon=_epsilon, maxiter=None, full_output=False, disp=False,
+              retall=True, callback=None):
     """
     Minimize a function using the BFGS algorithm.
     Parameters
@@ -83,11 +83,7 @@ def fmindfp(f, x0, fprime=None, args=(), gtol=1e-5, norm=Inf,
     Notes
     -----
     Optimize the function, f, whose gradient is given by fprime
-    using the quasi-Newton method of Broyden, Fletcher, Goldfarb,
-    and Shanno (BFGS)
-    References
-    ----------
-    Wright, and Nocedal 'Numerical Optimization', 1999, pg. 198.
+    using the quasi-Newton method of Davidon- Fletcher-Powell (DFP)
     """
     opts = {'gtol': gtol,
             'norm': norm,
@@ -112,12 +108,12 @@ def fmindfp(f, x0, fprime=None, args=(), gtol=1e-5, norm=Inf,
 
 
 def _minimize(fun, x0, args=(), jac=None, callback=None,
-                   gtol=1e-5, norm=Inf, eps=_epsilon, maxiter=None,
-                   disp=False, return_all=False,
-                   **unknown_options):
+                   gtol=1e-5, fxtol=1e-06, xtol=1e-07, norm=Inf,
+                   eps=_epsilon, maxiter=None, disp=False,
+                   return_all=False, **unknown_options):
     """
     Minimization of scalar function of one or more variables using the
-    BFGS algorithm.
+    DFP algorithm.
     Options
     -------
     disp : bool
@@ -149,7 +145,6 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
 
 
     gfk = myfprime(x0)
-    print('gfk: {0}'.format(gfk))
     k = 0
     N = len(x0)
     I = numpy.eye(N, dtype=int)
@@ -162,7 +157,9 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
     sk = [2 * gtol]
     warnflag = 0
     gnorm = vecnorm(gfk, ord=norm)
-    while (gnorm > gtol) and (k < maxiter):
+    xnorm = np.Inf
+    fx = np.Inf
+    while (gnorm > gtol) and (xnorm > xtol) and (fx > fxtol) and (k < maxiter):
         pk = -numpy.dot(Hk, gfk)
         try:
             alpha_k, fc, gc, old_fval, old_old_fval, gfkp1 = \
@@ -175,8 +172,18 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
             break
 
         xkp1 = xk + alpha_k * pk
+
+        fx = np.absolute(old_old_fval - old_fval)
+        xnorm = vecnorm(xkp1 - xk)
         if retall:
             allvecs.append(xkp1)
+        if disp:
+            print('Iter: ', k + 1)
+            print('x: ', xk)
+            print('gf(x):', gnorm)
+            print ('|f(x_p) - f(x_{p-1})|: ', fx)
+            print('norm(x_p - x_{p-1}): ', xnorm)
+            print()
         sk = xkp1 - xk
         xk = xkp1
         if gfkp1 is None:
@@ -256,21 +263,19 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
     return result
 
 
-def main():
+if __name__ == "__main__":
     import time
 
     times = []
     algor = []
-    x0 = [0.8, 1.2, 0.7]
+    x0 = [0.4, -0.6]
 
-    print("DFP Quasi-Newton")
-    print("=================")
+    from function import Function
+    from test_functions import *
+    fun = Function(ros)
+
     start = time.time()
-    x = fmindfp(rosen, x0, maxiter=80, disp=True)
-    print(x)
+    x = fmindfp(fun, x0, maxiter=80, disp=True)
+
     times.append(time.time() - start)
     algor.append('DFP Quasi-Newton\t')
-
-
-if __name__ == "__main__":
-    main()
