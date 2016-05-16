@@ -111,5 +111,3 @@ if __name__ == '__main__':
 
     fig.show()
 
-    #fig.plot_surf()
-    #fig.plot_contour()
