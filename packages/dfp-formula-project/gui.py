@@ -131,7 +131,7 @@ class Ui_MainWindow(QtGui.QMainWindow):
         #gtol=1e-05, xtol=1e-09, fxtol=1e-09
         opts = {'gtol': eps[0],
                 'xtol': eps[1],
-                'fxtol': eps[3],
+                'fxtol': eps[2],
                 'epsilon': div_err,
                 'maxiter': max_it
         }
@@ -153,7 +153,7 @@ class Ui_MainWindow(QtGui.QMainWindow):
 
 
         fig = Figure(fun, vec)
-        fig.plot_contour()
+        fig.show()
 
 
 import sys

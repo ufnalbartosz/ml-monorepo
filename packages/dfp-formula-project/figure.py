@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 import numpy as np
-from mayavi import mlab
 import matplotlib.pyplot as plt
+from mayavi import mlab
+#matplotlib3d
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
 
 
 class Figure():
@@ -29,9 +32,9 @@ class Figure():
             print('Dimension not equal 2')
 
 
-    def plot_surf(self):
+    def plot_surf_mayavi(self):
         if self.fdim == 2:
-            mlab.surf(self.x_range, self.y_range, self.values, warp_scale='auto')
+            mlab.surf(self.x_range, self.y_range, self.Zval, warp_scale='auto')
             mlab.show()
         else:
             print('Dimension not equal 2')
@@ -45,7 +48,8 @@ class Figure():
             #mlab.contour_surf(self.x_range, self.y_range, self.values, contours=20, figure=fig)
             #mlab.show()
 
-            plt.contour(self.x_range, self.y_range, self.values)
+            CS = self.ax.contour(self.x_range, self.y_range, self.Zval)
+            self.ax.clabel(CS, inline=1, fontsize=10)
             print('---'*4)
             x_ = []
             y_ = []
@@ -53,8 +57,8 @@ class Figure():
                 x_.append(i[0])
                 y_.append(i[1])
 
-            plt.plot(x_, y_)
-            plt.show()
+            self.ax.plot(x_, y_)
+#            plt.show()
         else:
             print('Dimension not equal 2')
 
@@ -62,10 +66,29 @@ class Figure():
     def calculate_function_values(self):
         X, Y = np.meshgrid(self.x_range, self.y_range)
         Z = np.asanyarray([self.fun((x, y)) for x, y in np.nditer([X, Y])])
-        self.values = Z.reshape(X.shape)
+        self.Zval = Z.reshape(X.shape)
+        self.Xmesh = X
+        self.Ymesh = Y
+
+
+    def plot_surf(self):
+        self.ax.plot_surface(self.Xmesh, self.Ymesh, self.Zval,
+                             rstride=1, cstride=1, cmap=cm.coolwarm,
+                             linewidth=0, antialiased=False)
+
+
 
     def show(self):
-        pass
+        fig = plt.figure(figsize=plt.figaspect(0.5)) #twice as wide as it's tall
+        self.ax = fig.add_subplot(1, 2, 1, projection='3d')
+
+        self.plot_surf()
+
+        self.ax = fig.add_subplot(1, 2, 2)
+        self.plot_contour()
+
+
+        plt.show()
 
 if __name__ == '__main__':
     from function import Function
@@ -80,17 +103,13 @@ if __name__ == '__main__':
     x = fmindfp(fun, x0, maxiter=10000, disp=True)
 
     #normalizacja otrzymanych danych wektora x
-    x_vec = x[1]
-    x_vec = np.asanyarray(x_vec)
-    for line in x[2]:
-        print(line)
+    vec = x[1]
+    vec = np.asanyarray(vec)
 
 
+    fig = Figure(fun, vec)
 
-    x = x[0]
-    x = x.tolist()
-
-    fig = Figure(fun, x, x0, x_vec)
+    fig.show()
 
     #fig.plot_surf()
-    fig.plot_contour()
+    #fig.plot_contour()
