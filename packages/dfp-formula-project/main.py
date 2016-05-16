@@ -24,8 +24,9 @@ if __name__ == '__main__':
     # rysowanie wykresow 3d w myjavi, plus warstwice i wektor
     # olicoznych punktow kolejnych osiagnietych wattosci funckji.
     from figure import Figure
+    import numpy as np
 
-    x_vec = None
-    fig = Figure(fun, x, x0, x_vec)
+    vec = np.asanyarray(x[1])
+    fig = Figure(fun, vec)
 
-    fig.plot_surf()
+    fig.show()

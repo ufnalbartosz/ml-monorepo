@@ -23,7 +23,7 @@ from scipy.optimize.optimize import (_epsilon, rosen, approx_fprime, _check_unkn
                                      wrap_function, vecnorm, _LineSearchError, _line_search_wolfe12,
                                      OptimizeResult, _status_message)
 
-def fmindfp(f, x0, fprime=None, args=(), gtol=1e-5, norm=Inf,
+def fmindfp(f, x0, fprime=None, args=(), gtol=1e-5, xtol=1e-09, fxtol=1e-09, norm=Inf,
               epsilon=_epsilon, maxiter=None, full_output=False, disp=False,
               retall=True, callback=None):
     """
@@ -86,6 +86,8 @@ def fmindfp(f, x0, fprime=None, args=(), gtol=1e-5, norm=Inf,
     using the quasi-Newton method of Davidon- Fletcher-Powell (DFP)
     """
     opts = {'gtol': gtol,
+            'xtol': xtol,
+            'fxtol': fxtol,
             'norm': norm,
             'eps': epsilon,
             'disp': disp,
@@ -108,7 +110,7 @@ def fmindfp(f, x0, fprime=None, args=(), gtol=1e-5, norm=Inf,
 
 
 def _minimize(fun, x0, args=(), jac=None, callback=None,
-                   gtol=1e-5, fxtol=1e-06, xtol=1e-07, norm=Inf,
+                   gtol=1e-5, fxtol=1e-09, xtol=1e-09, norm=Inf,
                    eps=_epsilon, maxiter=None, disp=False,
                    return_all=False, **unknown_options):
     """
@@ -178,13 +180,6 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
         xnorm = vecnorm(xkp1 - xk)
         if retall:
             allvecs.append(xkp1)
-        if disp:
-            print_ = ('Iter: ' + str(k + 1) + '\n')
-            print_ += ('x: ' + str(xk) + '\n')
-            print_ += ('f(x): ' + str(old_fval) + '\n') #zmiana na fx
-            print_ +=('gf(x): ' + str(gnorm) + '\n')
-            print_ +=('normx: ' + str(xnorm) + '\n')
-            print_lst.append(print_)
 
         sk = xkp1 - xk
         xk = xkp1
@@ -196,6 +191,16 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
         if callback is not None:
             callback(xk)
         k += 1
+
+        if disp:
+            print_ = ('Iter: ' + str(k) + '\n')
+            print_ += ('x: ' + str(xk) + '\n')
+            print_ += ('f(x): ' + str(f(xk)) + '\n') #zmiana na fx
+            print_ +=('gtol: ' + str(gnorm) + '\n')
+            print_ +=('xtol: ' + str(xnorm) + '\n')
+            print_ +=('fxtol: ' + str(fx) + '\n')
+            print_lst.append(print_)
+
         gnorm = vecnorm(gfk, ord=norm)
         if (gnorm <= gtol):
             break

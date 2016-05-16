@@ -5,18 +5,18 @@ import matplotlib.pyplot as plt
 
 
 class Figure():
-    def __init__(self, fun, x, x0, x_vec, lr=500):
+    def __init__(self, fun, x_vec, lr=500):
         self.fdim = x_vec.shape[1]
         if self.fdim == 2:
             self.fun = fun
 
             #dodac warunek min max i podawc je do funckji crt_range
-            const = 5
+            const = 10
             maxx = np.max(x_vec[:, 0]) + const
-            minx = np.min(x_vec[:, 0]) - const
+            minx = np.min(x_vec[:, 0]) - maxx
 
             maxy = np.max(x_vec[:, 1]) + const
-            miny = np.min(x_vec[:, 1]) - const
+            miny = np.min(x_vec[:, 1]) - maxy
 
             self.x_range = np.linspace(start=minx, stop=maxx, num=lr)
             self.y_range = np.linspace(start=miny, stop=maxy, num=lr)

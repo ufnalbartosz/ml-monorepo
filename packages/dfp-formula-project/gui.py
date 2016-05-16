@@ -108,7 +108,7 @@ class Ui_MainWindow(QtGui.QMainWindow):
     def start_button_clicked(self):
         cost_fun = str(self.cost_function.text())
         max_it = int(self.max_iter.text())
-        eps = float(self.epsilon.text())
+        eps = self.epsilon.text()
         div_err = float(self.div_err.text())
         x0 = self.initial_cond.text()
 
@@ -120,9 +120,24 @@ class Ui_MainWindow(QtGui.QMainWindow):
             x0 = tuple(float(i) for i in x0)
 
 
-        fun = Function(cost_fun)
+        eps = eps.replace(" ", "")
+        eps = eps.split(",")
+        if len(eps) == 3:
+            eps = tuple(float(i) for i in eps)
+        else:
+            eps = tuple(float(eps[0]) for i in range(3))
+
         #ustawic tolerancje!!!!!! w funckacji
-        x = fmindfp(fun, x0, maxiter=max_it, disp=True)
+        #gtol=1e-05, xtol=1e-09, fxtol=1e-09
+        opts = {'gtol': eps[0],
+                'xtol': eps[1],
+                'fxtol': eps[3],
+                'epsilon': div_err,
+                'maxiter': max_it
+        }
+
+        fun = Function(cost_fun)
+        x = fmindfp(fun, x0, disp=True, **opts)
 
         #normalizacjay wjscia:
         output = np.asarray(x[2])
@@ -137,7 +152,7 @@ class Ui_MainWindow(QtGui.QMainWindow):
         print(vec)
 
 
-        fig = Figure(fun, x, x0, vec)
+        fig = Figure(fun, vec)
         fig.plot_contour()
 
 
