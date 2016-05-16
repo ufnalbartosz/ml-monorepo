@@ -9,7 +9,7 @@ class Function(object):
         self.var.sort()
 
     def __call__(self, x):
-        values = dict( (self.var[i], x[i]) for i in range(self.dim) )
+        values = dict( (self.var[i], float(x[i])) for i in range(self.dim) )
         return self.expression.evaluate(values)
 
     @property
@@ -29,7 +29,3 @@ if __name__ == '__main__':
     x = fmindfp(fun, x0, maxiter=10000, disp=True)
     print(x, x0)
 
-
-#from function import Function
-#from test_functions import *
-#fun = Function(ros)

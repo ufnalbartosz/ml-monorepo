@@ -27,7 +27,7 @@ def fmindfp(f, x0, fprime=None, args=(), gtol=1e-5, norm=Inf,
               epsilon=_epsilon, maxiter=None, full_output=False, disp=False,
               retall=True, callback=None):
     """
-    Minimize a function using the BFGS algorithm.
+    Minimize a function using the DFP algorithm.
     Parameters
     ----------
     f : callable f(x,*args)
@@ -79,7 +79,7 @@ def fmindfp(f, x0, fprime=None, args=(), gtol=1e-5, norm=Inf,
     See also
     --------
     minimize: Interface to minimization algorithms for multivariate
-        functions. See the 'BFGS' `method` in particular.
+        functions. See the 'DFP' `method` in particular.
     Notes
     -----
     Optimize the function, f, whose gradient is given by fprime
@@ -96,15 +96,15 @@ def fmindfp(f, x0, fprime=None, args=(), gtol=1e-5, norm=Inf,
 
     if full_output:
         retlist = (res['x'], res['fun'], res['jac'], res['hess_inv'],
-                   res['nfev'], res['njev'], res['status'])
+                   res['nfev'], res['njev'], res['status'], res['lst'])
         if retall:
             retlist += (res['allvecs'], )
         return retlist
     else:
         if retall:
-            return res['x'], res['allvecs']
+            return res['x'], res['allvecs'], res['lst']
         else:
-            return res['x']
+            return res['x'], res['lst']
 
 
 def _minimize(fun, x0, args=(), jac=None, callback=None,
@@ -159,6 +159,7 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
     gnorm = vecnorm(gfk, ord=norm)
     xnorm = np.Inf
     fx = np.Inf
+    print_lst = []
     while (gnorm > gtol) and (xnorm > xtol) and (fx > fxtol) and (k < maxiter):
         pk = -numpy.dot(Hk, gfk)
         try:
@@ -178,12 +179,13 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
         if retall:
             allvecs.append(xkp1)
         if disp:
-            print('Iter: ', k + 1)
-            print('x: ', xk)
-            print('gf(x):', gnorm)
-            print ('|f(x_p) - f(x_{p-1})|: ', fx)
-            print('norm(x_p - x_{p-1}): ', xnorm)
-            print()
+            print_ = ('Iter: ' + str(k + 1) + '\n')
+            print_ += ('x: ' + str(xk) + '\n')
+            print_ += ('f(x): ' + str(old_fval) + '\n') #zmiana na fx
+            print_ +=('gf(x): ' + str(gnorm) + '\n')
+            print_ +=('normx: ' + str(xnorm) + '\n')
+            print_lst.append(print_)
+
         sk = xkp1 - xk
         xk = xkp1
         if gfkp1 is None:
@@ -254,7 +256,7 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
             print("         Function evaluations: %d" % func_calls[0])
             print("         Gradient evaluations: %d" % grad_calls[0])
 
-    result = OptimizeResult(fun=fval, jac=gfk, hess_inv=Hk, nfev=func_calls[0],
+    result = OptimizeResult(fun=fval,lst=print_lst, jac=gfk, hess_inv=Hk, nfev=func_calls[0],
                             njev=grad_calls[0], status=warnflag,
                             success=(warnflag == 0), message=msg, x=xk,
                             nit=k)
