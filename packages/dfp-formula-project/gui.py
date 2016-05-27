@@ -11,6 +11,10 @@ from figure import Figure
 from fmindfp import fmindfp
 import numpy as np
 
+from multiprocessing import Process
+
+def plot_graph(fig):
+    fig.show()
 
 from PyQt4 import QtCore, QtGui
 
@@ -154,6 +158,9 @@ class Ui_MainWindow(QtGui.QMainWindow):
 
         fig = Figure(fun, vec)
         fig.show()
+        #p = Process(target=plot_graph, args=fig)
+        #p.start()
+        #p.join()
 
 
 import sys

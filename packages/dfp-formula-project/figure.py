@@ -8,25 +8,38 @@ from matplotlib import cm
 
 
 class Figure():
-    def __init__(self, fun, x_vec, lr=500):
-        self.fdim = x_vec.shape[1]
+    def __init__(self, fun, vec, lr=500):
+        self.fdim = vec.ndim
         if self.fdim == 2:
             self.fun = fun
 
             #dodac warunek min max i podawc je do funckji crt_range
-            const = 10
-            maxx = np.max(x_vec[:, 0]) + const
-            minx = np.min(x_vec[:, 0]) - maxx
+            scale = 1.3;
+            x = vec[:, 0]
+            y = vec[:, 1]
 
-            maxy = np.max(x_vec[:, 1]) + const
-            miny = np.min(x_vec[:, 1]) - maxy
+            x_distance = scale * np.abs(x.max() - x.min())
+            y_distance = scale * np.abs(y.max() - y.min())
 
-            self.x_range = np.linspace(start=minx, stop=maxx, num=lr)
-            self.y_range = np.linspace(start=miny, stop=maxy, num=lr)
+            const = 0.3
+            x_max = x.max() + const * x_distance
+            x_min = x.min() - const * x_distance
+
+            y_max = y.max() + const * y_distance
+            y_min = y.min() - const * y_distance
+
+            if x_max < x_min:
+                x_min, x_max = x_max, x_min
+
+            if y_max < y_min:
+                y_min, y_max = y_max, y_min
+
+            self.x_range = np.linspace(start=x_min, stop=x_max, num=lr)
+            self.y_range = np.linspace(start=y_min, stop=y_max, num=lr)
 
             self.calculate_function_values()
 
-            self.vec = x_vec
+            self.vec = vec
 
         else:
             print('Dimension not equal 2')
@@ -34,7 +47,7 @@ class Figure():
 
     def plot_surf_mayavi(self):
         if self.fdim == 2:
-            mlab.surf(self.x_range, self.y_range, self.Zval, warp_scale='auto')
+            mlab.surf(self.x_range, self.y_range, self.z_val, warp_scale='auto')
             mlab.show()
         else:
             print('Dimension not equal 2')
@@ -42,23 +55,21 @@ class Figure():
 
     def plot_contour(self):
         if self.fdim == 2:
-            #mlab.contour_surf(self.val_vec)
-            #fig = mlab.gcf()
-            #mlab.plot3d(self.vec[1], self.vec[2], self.vec[0], figure=fig)
-            #mlab.contour_surf(self.x_range, self.y_range, self.values, contours=20, figure=fig)
-            #mlab.show()
-
-            CS = self.ax.contour(self.x_range, self.y_range, self.Zval)
-            self.ax.clabel(CS, inline=1, fontsize=10)
-            print('---'*4)
+            CS = plt.contour(self.x_range, self.y_range, self.z_val, colors='k')
+            plt.clabel(CS, inline=1, fontsize=10)
             x_ = []
             y_ = []
             for i in self.vec:
                 x_.append(i[0])
                 y_.append(i[1])
 
-            self.ax.plot(x_, y_)
-#            plt.show()
+            plt.plot(x_, y_, color='k')
+
+            plt.imshow(self.z_val, vmin=self.z_val.min(), vmax=self.z_val.max(),
+                       extent=[self.x_range.min(), self.x_range.max(),
+                               self.y_range.max(), self.y_range.min()])
+
+            plt.show()
         else:
             print('Dimension not equal 2')
 
@@ -66,28 +77,26 @@ class Figure():
     def calculate_function_values(self):
         X, Y = np.meshgrid(self.x_range, self.y_range)
         Z = np.asanyarray([self.fun((x, y)) for x, y in np.nditer([X, Y])])
-        self.Zval = Z.reshape(X.shape)
-        self.Xmesh = X
-        self.Ymesh = Y
+        self.z_val = Z.reshape(X.shape)
+        self.x_mesh = X
+        self.y_mesh = Y
 
 
     def plot_surf(self):
-        self.ax.plot_surface(self.Xmesh, self.Ymesh, self.Zval,
+        self.ax.plot_surface(self.x_mesh, self.y_mesh, self.z_val,
                              rstride=1, cstride=1, cmap=cm.coolwarm,
                              linewidth=0, antialiased=False)
 
 
 
     def show(self):
-        fig = plt.figure(figsize=plt.figaspect(0.5)) #twice as wide as it's tall
-        self.ax = fig.add_subplot(1, 2, 1, projection='3d')
+#        fig = plt.figure(figsize=plt.figaspect(0.5)) #twice as wide as it's tall
+#        self.ax = fig.add_subplot(1, 2, 1, projection='3d')
 
-        self.plot_surf()
+#        self.plot_surf()
 
-        self.ax = fig.add_subplot(1, 2, 2)
+#        self.ax = fig.add_subplot(1, 2, 2)
         self.plot_contour()
-
-
         plt.show()
 
 if __name__ == '__main__':
@@ -99,7 +108,7 @@ if __name__ == '__main__':
 
 
     from fmindfp import fmindfp
-    x0 = [0.1, 0.1]
+    x0 = [0.1, -0.1]
     x = fmindfp(fun, x0, maxiter=10000, disp=True)
 
     #normalizacja otrzymanych danych wektora x
@@ -109,5 +118,6 @@ if __name__ == '__main__':
 
     fig = Figure(fun, vec)
 
-    fig.show()
-
+    #fig.plot_surf_mayavi()
+    fig.plot_contour()
+    #fig.show()

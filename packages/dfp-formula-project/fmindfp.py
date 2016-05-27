@@ -255,11 +255,12 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
     else:
         msg = _status_message['success']
         if disp:
-            print(msg)
-            print("         Current function value: %f" % fval)
-            print("         Iterations: %d" % k)
-            print("         Function evaluations: %d" % func_calls[0])
-            print("         Gradient evaluations: %d" % grad_calls[0])
+            print_ = (msg + '\n')
+            print_ += ("         Current function value: %f\n" % fval)
+            print_ += ("         Iterations: %d\n" % k)
+            print_ += ("         Function evaluations: %d\n" % func_calls[0])
+            print_ +=("         Gradient evaluations: %d\n" % grad_calls[0])
+            print_lst.append(print_)
 
     result = OptimizeResult(fun=fval,lst=print_lst, jac=gfk, hess_inv=Hk, nfev=func_calls[0],
                             njev=grad_calls[0], status=warnflag,
