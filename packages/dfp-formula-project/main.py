@@ -4,7 +4,7 @@ if __name__ == '__main__':
     #start GUI, get data from GUI;
     from function import Function
     from test_functions import *
-    given_function = goldstein
+    given_function = f4
     fun = Function(given_function)
 
 

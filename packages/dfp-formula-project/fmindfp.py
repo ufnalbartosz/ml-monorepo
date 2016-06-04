@@ -22,69 +22,16 @@ from scipy._lib._util import getargspec_no_self as _getargspec
 from scipy.optimize.optimize import (_epsilon, rosen, approx_fprime, _check_unknown_options,
                                      wrap_function, vecnorm, _LineSearchError, _line_search_wolfe12,
                                      OptimizeResult, _status_message)
+_status_message = {
+    'maxiter' : "Maksymalna liczba iteracji zostala oiagnieta",
+    'success' : "Wykonanie algorytmu zakonczylo sie powodzeniem",
+    'pr_loss' : "Napotkano nieznany blad wziazany z utrata precyzji"
+}
 
 def fmindfp(f, x0, fprime=None, args=(), gtol=1e-5, xtol=1e-09, fxtol=1e-09, norm=Inf,
               epsilon=_epsilon, maxiter=None, full_output=False, disp=False,
               retall=True, callback=None):
-    """
-    Minimize a function using the DFP algorithm.
-    Parameters
-    ----------
-    f : callable f(x,*args)
-        Objective function to be minimized.
-    x0 : ndarray
-        Initial guess.
-    fprime : callable f'(x,*args), optional
-        Gradient of f.
-    args : tuple, optional
-        Extra arguments passed to f and fprime.
-    gtol : float, optional
-        Gradient norm must be less than gtol before successful termination.
-    norm : float, optional
-        Order of norm (Inf is max, -Inf is min)
-    epsilon : int or ndarray, optional
-        If fprime is approximated, use this value for the step size.
-    callback : callable, optional
-        An optional user-supplied function to call after each
-        iteration.  Called as callback(xk), where xk is the
-        current parameter vector.
-    maxiter : int, optional
-        Maximum number of iterations to perform.
-    full_output : bool, optional
-        If True,return fopt, func_calls, grad_calls, and warnflag
-        in addition to xopt.
-    disp : bool, optional
-        Print convergence message if True.
-    retall : bool, optional
-        Return a list of results at each iteration if True.
-    Returns
-    -------
-    xopt : ndarray
-        Parameters which minimize f, i.e. f(xopt) == fopt.
-    fopt : float
-        Minimum value.
-    gopt : ndarray
-        Value of gradient at minimum, f'(xopt), which should be near 0.
-    Bopt : ndarray
-        Value of 1/f''(xopt), i.e. the inverse hessian matrix.
-    func_calls : int
-        Number of function_calls made.
-    grad_calls : int
-        Number of gradient calls made.
-    warnflag : integer
-        1 : Maximum number of iterations exceeded.
-        2 : Gradient and/or function calls not changing.
-    allvecs  :  list
-        `OptimizeResult` at each iteration.  Only returned if retall is True.
-    See also
-    --------
-    minimize: Interface to minimization algorithms for multivariate
-        functions. See the 'DFP' `method` in particular.
-    Notes
-    -----
-    Optimize the function, f, whose gradient is given by fprime
-    using the quasi-Newton method of Davidon- Fletcher-Powell (DFP)
-    """
+
     opts = {'gtol': gtol,
             'xtol': xtol,
             'fxtol': fxtol,
@@ -113,23 +60,7 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
                    gtol=1e-5, fxtol=1e-09, xtol=1e-09, norm=Inf,
                    eps=_epsilon, maxiter=None, disp=False,
                    return_all=False, **unknown_options):
-    """
-    Minimization of scalar function of one or more variables using the
-    DFP algorithm.
-    Options
-    -------
-    disp : bool
-        Set to True to print convergence messages.
-    maxiter : int
-        Maximum number of iterations to perform.
-    gtol : float
-        Gradient norm must be less than `gtol` before successful
-        termination.
-    norm : float
-        Order of norm (Inf is max, -Inf is min).
-    eps : float or ndarray
-        If `jac` is approximated, use this value for the step size.
-    """
+
     _check_unknown_options(unknown_options)
     f = fun
     fprime = jac
@@ -169,8 +100,8 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
                      _line_search_wolfe12(f, myfprime, xk, pk, gfk,
                                           old_fval, old_old_fval)
         except _LineSearchError:
-            # Line search failed to find a better solution.
-            print("Line search failed to find a better solution.")
+            # search failed to find a better solution.
+            print_lst.append("Przeszukiwanie liniowe zawiodlo lub nie moze osiagnac lepszego rozwiazania")
             warnflag = 2
             break
 
@@ -208,7 +139,7 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
         if not numpy.isfinite(old_fval):
             # We correctly found +-Inf as optimal value, or something went
             # wrong.
-            print("We correctly found +-Inf as optimal value, or something went wrong.")
+            print_lst.append("Zlaneziono +-Inf za optymalna wartosc... lub cos poszlo zle.")
             warnflag = 2
             break
 
@@ -217,11 +148,11 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
         except ZeroDivisionError:
             rhok = 1000.0
             if disp:
-                print("Divide-by-zero encountered: rhok assumed large")
+                print_lst.append("Dzielenie przez zero!!")
         if isinf(rhok):  # this is patch for numpy
             rhok = 1000.0
             if disp:
-                print("Divide-by-zero encountered: rhok assumed large")
+                print_lst.append("Dzielenie przez zero!!")
         A1 = I - sk[:, numpy.newaxis] * yk[numpy.newaxis, :] * rhok
         A2 = I - yk[:, numpy.newaxis] * sk[numpy.newaxis, :] * rhok
         Hk = numpy.dot(A1, numpy.dot(Hk, A2)) + (rhok * sk[:, numpy.newaxis] *
@@ -231,37 +162,39 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
     if np.isnan(fval):
         # This can happen if the first call to f returned NaN;
         # the loop is then never entered.
-        print("This can happen if the first call to f returned NaN; the loop is then never entered.")
+        print_lst.append("Osiagnieto Nan w pierwszym wywolaniem algorytmu.")
         warnflag = 2
 
     if warnflag == 2:
         msg = _status_message['pr_loss']
         if disp:
-            print("Warning: " + msg)
-            print("         Current function value: %f" % fval)
-            print("         Iterations: %d" % k)
-            print("         Function evaluations: %d" % func_calls[0])
-            print("         Gradient evaluations: %d" % grad_calls[0])
+            print_ = ("Ostrzezenie: " + msg)
+            print_ += ("         Wartosc funkcji celu: %f" % fval)
+            print_ += ("         Iteracje:  %d" % k)
+            print_ += ("         Wywolania funkcji: %d" % func_calls[0])
+            print_ += ("         Wywolania gradientu: %d" % grad_calls[0])
 
     elif k >= maxiter:
         warnflag = 1
         msg = _status_message['maxiter']
         if disp:
-            print("Warning: " + msg)
-            print("         Current function value: %f" % fval)
-            print("         Iterations: %d" % k)
-            print("         Function evaluations: %d" % func_calls[0])
-            print("         Gradient evaluations: %d" % grad_calls[0])
+            print_ = ("Ostrzerzenie: " + msg)
+            print_ += ("         Wartosc funkcji celu: %f" % fval)
+            print_ += ("         Iteracje:  %d" % k)
+            print_ += ("         Wywolania funkcji: %d" % func_calls[0])
+            print_ += ("         Wywolania gradientu: %d" % grad_calls[0])
+            print_lst.append(print_)
     else:
         msg = _status_message['success']
         if disp:
             print_ = (msg + '\n')
-            print_ += ("         Current function value: %f\n" % fval)
-            print_ += ("         Iterations: %d\n" % k)
-            print_ += ("         Function evaluations: %d\n" % func_calls[0])
-            print_ +=("         Gradient evaluations: %d\n" % grad_calls[0])
+            print_ += ("         Wartosc funkcji celu: %f" % fval)
+            print_ += ("         Iteracje:  %d" % k)
+            print_ += ("         Wywolania funkcji: %d" % func_calls[0])
+            print_ += ("         Wywolania gradientu: %d" % grad_calls[0])
             print_lst.append(print_)
 
+    print(print_lst)
     result = OptimizeResult(fun=fval,lst=print_lst, jac=gfk, hess_inv=Hk, nfev=func_calls[0],
                             njev=grad_calls[0], status=warnflag,
                             success=(warnflag == 0), message=msg, x=xk,
@@ -280,7 +213,7 @@ if __name__ == "__main__":
 
     from function import Function
     from test_functions import *
-    fun = Function(ros)
+    fun = Function(f2)
 
     start = time.time()
     x = fmindfp(fun, x0, maxiter=80, disp=True)

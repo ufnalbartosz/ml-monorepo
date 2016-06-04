@@ -8,7 +8,7 @@ from matplotlib import cm
 
 
 class Figure():
-    def __init__(self, fun, vec, lr=500):
+    def __init__(self, fun, vec, lr=100):
         self.fdim = vec.ndim
         if self.fdim == 2:
             self.fun = fun
@@ -55,7 +55,15 @@ class Figure():
 
     def plot_contour(self):
         if self.fdim == 2:
-            CS = plt.contour(self.x_range, self.y_range, self.z_val, colors='k')
+
+            p = [self.x_range.min(), self.x_range.max(),
+                               self.y_range.max(), self.y_range.min()]
+            p2 = [self.x_range.min(), self.x_range.max(),
+                               self.y_range.min(), self.y_range.max()]
+            plt.imshow(self.z_val, vmin=self.z_val.min(), vmax=self.z_val.max(),
+                       extent=p)
+
+            CS = plt.contour(self.x_range, self.y_range, self.z_val, 15,  colors='k')
             plt.clabel(CS, inline=1, fontsize=10)
             x_ = []
             y_ = []
@@ -64,10 +72,18 @@ class Figure():
                 y_.append(i[1])
 
             plt.plot(x_, y_, color='k')
+            plt.ylabel("x2")
+            plt.xlabel("x1")
 
-            plt.imshow(self.z_val, vmin=self.z_val.min(), vmax=self.z_val.max(),
-                       extent=[self.x_range.min(), self.x_range.max(),
-                               self.y_range.max(), self.y_range.min()])
+            if self.y_range.max() > 0:
+                plt.ylim(self.y_range.min(), self.y_range.max())
+            else:
+                plt.ylim(self.y_range.max(), self.y_range.min())
+
+            if self.x_range.max() > 0:
+                plt.ylim(self.x_range.min(), self.x_range.max())
+            else:
+                plt.ylim(self.x_range.max(), self.x_range.min())
 
             plt.show()
         else:
@@ -108,7 +124,7 @@ if __name__ == '__main__':
 
 
     from fmindfp import fmindfp
-    x0 = [0.1, -0.1]
+    x0 = [-0.1, 0.1]
     x = fmindfp(fun, x0, maxiter=10000, disp=True)
 
     #normalizacja otrzymanych danych wektora x

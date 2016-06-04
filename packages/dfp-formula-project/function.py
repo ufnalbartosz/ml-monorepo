@@ -21,7 +21,7 @@ class Function(object):
 if __name__ == '__main__':
     from test_functions import *
 
-    fun = Function(ros)
+    fun = Function(f2)
     x = (1, 2)
 
     from fmindfp import *
