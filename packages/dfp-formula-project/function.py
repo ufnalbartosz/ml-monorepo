@@ -28,4 +28,3 @@ if __name__ == '__main__':
     x0 = [0.4, -0.6]
     x = fmindfp(fun, x0, maxiter=10000, disp=True)
     print(x, x0)
-

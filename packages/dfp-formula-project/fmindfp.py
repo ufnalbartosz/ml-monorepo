@@ -194,7 +194,8 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
             print_ += ("         Wywolania gradientu: %d" % grad_calls[0])
             print_lst.append(print_)
 
-    print(print_lst)
+    [print(line) for line in print_lst]
+
     result = OptimizeResult(fun=fval,lst=print_lst, jac=gfk, hess_inv=Hk, nfev=func_calls[0],
                             njev=grad_calls[0], status=warnflag,
                             success=(warnflag == 0), message=msg, x=xk,

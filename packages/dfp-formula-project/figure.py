@@ -81,9 +81,9 @@ class Figure():
                 plt.ylim(self.y_range.max(), self.y_range.min())
 
             if self.x_range.max() > 0:
-                plt.ylim(self.x_range.min(), self.x_range.max())
+                plt.xlim(self.x_range.min(), self.x_range.max())
             else:
-                plt.ylim(self.x_range.max(), self.x_range.min())
+                plt.xlim(self.x_range.max(), self.x_range.min())
 
             plt.show()
         else:
@@ -119,21 +119,17 @@ if __name__ == '__main__':
     from function import Function
     from test_functions import *
 
-    given_function = f10
+    given_function = t1
     fun = Function(given_function)
 
 
     from fmindfp import fmindfp
-    x0 = [-0.1, 0.1]
+    x0 = t11
     x = fmindfp(fun, x0, maxiter=10000, disp=True)
 
-    #normalizacja otrzymanych danych wektora x
     vec = x[1]
     vec = np.asanyarray(vec)
 
 
     fig = Figure(fun, vec)
-
-    #fig.plot_surf_mayavi()
-    fig.plot_contour()
-    #fig.show()
+    fig.show()
