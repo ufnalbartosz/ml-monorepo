@@ -9,7 +9,7 @@ data_url = "https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz"
 # Labels names.
 food_containers = ['bottle', 'bowl', 'can', 'cup', 'plate']
 fruit_and_vegetables = ['apple', 'mushroom', 'orange', 'pear', 'sweet_pepper']
-household_electrical_devices = ['clock', 'computer_keyboard',
+household_electrical_devices = ['clock', 'keyboard',
                                 'lamp', 'telephone', 'television']
 household_furniture = ['bed', 'chair', 'couch', 'table', 'wardrobe']
 
@@ -17,8 +17,6 @@ labels = (food_containers + fruit_and_vegetables +
           household_electrical_devices + household_furniture)
 
 labels = sorted(labels)
-
-print labels
 
 # Width and height of each image.
 img_size = 32
@@ -80,17 +78,16 @@ def _convert_images(raw):
 def _convert_labels(fine_labels):
     mask, class_names = skip_if_not_in_labels(fine_labels)
 
-    coverted_labels = []
-    for it, cond in enumerate(mask):
-        if cond:
-            number = fine_labels[it]
-            name = class_names[number]
-            index = labels.index(name)
-            coverted_labels.append(index)
+    converted_labels = []
+    fine_labels = fine_labels[mask, ...]
+    for id in fine_labels:
+        label_name = class_names[id]
+        new_id = labels.index(label_name)
+        converted_labels.append(new_id)
 
-    coverted_labels = np.array(coverted_labels)
+    converted_labels = np.array(converted_labels)
 
-    return coverted_labels, mask
+    return converted_labels, mask
 
 
 def _load_data(filename):
@@ -179,35 +176,11 @@ def maybe_download_and_extract():
     _maybe_download_and_extract(url=data_url, download_dir=data_path)
 
 
-def load_training_data():
-    # Pre-allocate the arrays for the images and class-numbers for efficiency.
-    images = np.zeros(shape=[_num_images_train, img_size, img_size, num_channels], dtype=float)
-    cls = np.zeros(shape=[_num_images_train], dtype=int)
+def load_data(filename):
+    images, cls = _load_data(filename=filename)
 
-    # Begin-index for the current batch.
-    begin = 0
-
-    # For each data-file.
-    for i in range(_num_files_train):
-        # Load the images and class-numbers from the data-file.
-        images_batch, cls_batch, _ = _load_data(filename="train")
-
-        # Number of images in this batch.
-        num_images = len(images_batch)
-
-        # End-index for the current batch.
-        end = begin + num_images
-
-        # Store the images into the array.
-        images[begin:end, :] = images_batch
-
-        # Store the class-numbers into the array.
-        cls[begin:end] = cls_batch
-
-        # The begin-index for the next batch is the current end-index.
-        begin = end
-
-    return images, cls, one_hot_encoded(class_numbers=cls, num_classes=num_classes)
+    return images, cls, one_hot_encoded(
+        class_numbers=cls, num_classes=num_classes)
 
 
 def load_class_names():
@@ -229,10 +202,3 @@ def skip_if_not_in_labels(fine_labels):
             mask.append(False)
 
     return mask, class_names
-
-
-def load_test_data():
-    images, class_ids = _load_data(filename="test")
-
-    return images, class_ids, one_hot_encoded(
-        class_numbers=class_ids, num_classes=num_classes)
