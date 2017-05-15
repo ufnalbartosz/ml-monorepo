@@ -9,20 +9,27 @@ import os
 import prettytensor as pt
 
 # local imports
-import loader
 from loader import img_size, num_channels, num_classes
 from plotting import plot_images
+from prepare_dataset import maybe_download_and_extract
 
-loader.maybe_download_and_extract()
 
-_, class_names = loader.load_class_names()
+# class_names = loader.load_class_names()
 
-images_train, cls_train, labels_train = loader.load_training_data()
-images_test, cls_test, labels_test = loader.load_test_data()
+# images_test, cls_test, labels_test = loader.load_test_data()
+# images_train, cls_train, labels_train = loader.load_training_data()
+
+dataset = maybe_download_and_extract()
+class_names = dataset['class_names']
+images_train = dataset['test_images']
+images_test = dataset['test_images']
+labels_test = dataset['test_labels']
+cls_test = dataset['test_cls']
 
 print("Size of:")
 print("- Training-set:\t\t{}".format(len(images_train)))
 print("- Test-set:\t\t{}".format(len(images_test)))
+
 
 img_size_cropped = 24
 
@@ -32,10 +39,12 @@ images = images_test[0:9]
 cls_true = cls_test[0:9]
 
 # Plot the images and labels using our helper-function above.
-plot_images(images=images, class_names=class_names, cls_true=cls_true, smooth=False)
-plot_images(images=images, class_names=class_names, cls_true=cls_true, smooth=True)
+plot_images(images=images, class_names=class_names,
+            cls_true=cls_true, smooth=False)
+plot_images(images=images, class_names=class_names,
+            cls_true=cls_true, smooth=True)
+plt.show()
 
-raise RuntimeError
 x = tf.placeholder(tf.float32,
                    shape=[None, img_size, img_size, num_channels],
                    name='x')
@@ -311,7 +320,8 @@ def plot_example_errors(cls_pred, correct):
     # Plot the first 9 images.
     plot_images(images=images[0:9],
                 cls_true=cls_true[0:9],
-                cls_pred=cls_pred[0:9])
+                cls_pred=cls_pred[0:9],
+                class_names=class_names)
 
 
 def plot_confusion_matrix(cls_pred):
@@ -444,7 +454,7 @@ def plot_conv_weights(weights, input_channel=0):
 
     # Number of grids to plot.
     # Rounded-up, square-root of the number of filters.
-    num_grids = math.ceil(math.sqrt(num_filters))
+    num_grids = int(math.ceil(math.sqrt(num_filters)))
 
     # Create figure with a grid of sub-plots.
     fig, axes = plt.subplots(num_grids, num_grids)
@@ -494,7 +504,7 @@ def plot_layer_output(layer_output, image):
 
     # Number of grid-cells to plot.
     # Rounded-up, square-root of the number of filters.
-    num_grids = math.ceil(math.sqrt(num_images))
+    num_grids = int(math.ceil(math.sqrt(num_images)))
 
     # Create figure with a grid of sub-plots.
     fig, axes = plt.subplots(num_grids, num_grids)
@@ -531,7 +541,8 @@ def plot_distorted_image(image, cls_true):
     result = session.run(distorted_images, feed_dict=feed_dict)
 
     # Plot the images.
-    plot_images(images=result, cls_true=np.repeat(cls_true, 9))
+    plot_images(images=result, cls_true=np.repeat(cls_true, 9),
+                class_names=class_names)
 
 
 def get_test_image(i):

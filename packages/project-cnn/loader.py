@@ -1,6 +1,11 @@
 import numpy as np
 import pickle
 import os
+import sys
+import urllib
+import tarfile
+import zipfile
+
 
 from dataset import one_hot_encoded
 data_path = "data/CIFAR-100/"
@@ -29,19 +34,6 @@ img_size_flat = img_size * img_size * num_channels
 
 # Number of classes.
 num_classes = len(labels)
-
-########################################################################
-# Various constants used to allocate arrays of the correct size.
-
-# Number of files for the training-set.
-_num_files_train = 1
-
-# Number of images for each batch-file in the training-set.
-_images_per_file = 50000
-
-# Total number of images in the training-set.
-# This is used to pre-allocate arrays for efficiency.
-_num_images_train = _num_files_train * _images_per_file
 
 
 def _unpickle(filename):
@@ -76,7 +68,7 @@ def _convert_images(raw):
 
 
 def _convert_labels(fine_labels):
-    mask, class_names = skip_if_not_in_labels(fine_labels)
+    mask, class_names = create_mask_class_names_to_skip(fine_labels)
 
     converted_labels = []
     fine_labels = fine_labels[mask, ...]
@@ -118,12 +110,6 @@ def _load_data(filename):
 ########################################################################
 # Public functions that you may call to download the data-set from
 # the internet and load the data into memory.
-
-import sys
-import os
-import urllib
-import tarfile
-import zipfile
 
 
 def _print_download_progress(count, block_size, total_size):
@@ -191,7 +177,7 @@ def load_class_names():
     return meta['fine_label_names']
 
 
-def skip_if_not_in_labels(fine_labels):
+def create_mask_class_names_to_skip(fine_labels):
     class_names = load_class_names()
 
     mask = []
