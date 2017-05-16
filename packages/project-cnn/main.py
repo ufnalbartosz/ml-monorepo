@@ -22,6 +22,7 @@ from prepare_dataset import maybe_download_and_extract
 dataset = maybe_download_and_extract()
 class_names = dataset['class_names']
 images_train = dataset['test_images']
+labels_train = dataset['test_labels']
 images_test = dataset['test_images']
 labels_test = dataset['test_labels']
 cls_test = dataset['test_cls']
@@ -43,7 +44,6 @@ plot_images(images=images, class_names=class_names,
             cls_true=cls_true, smooth=False)
 plot_images(images=images, class_names=class_names,
             cls_true=cls_true, smooth=True)
-plt.show()
 
 x = tf.placeholder(tf.float32,
                    shape=[None, img_size, img_size, num_channels],
@@ -153,7 +153,7 @@ global_step = tf.Variable(initial_value=0,
                           name='global_step', trainable=False)
 _, loss = create_network(training=True)
 
-optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(loss, global_step=global_step)
+optimizer = tf.train.GradientDescentOptimizer(learning_rate=1e-4).minimize(loss, global_step=global_step)
 
 y_pred, _ = create_network(training=False)
 y_pred_cls = tf.argmax(y_pred, dimension=1)
@@ -337,11 +337,13 @@ def plot_confusion_matrix(cls_pred):
     # Print the confusion matrix as text.
     for i in range(num_classes):
         # Append the class-name to each line.
-        class_name = "({}) {}".format(i, class_names[i])
-        print(cm[i, :], class_name)
+        row = ''.join('%04s ' % x for x in cm[i])
+
+        class_name = " ({:>2}) {}".format(i, class_names[i])
+        print row + class_name
 
     # Print the class-numbers for easy reference.
-    class_numbers = [" ({0})".format(i) for i in range(num_classes)]
+    class_numbers = [" (%02s)" % i for i in range(num_classes)]
     print("".join(class_numbers))
 
 
@@ -478,7 +480,7 @@ def plot_conv_weights(weights, input_channel=0):
 
     # Ensure the plot is shown correctly with multiple plots
     # in a single Notebook cell.
-    plt.show()
+    # plt.show()
 
 
 def plot_layer_output(layer_output, image):
@@ -526,7 +528,7 @@ def plot_layer_output(layer_output, image):
 
     # Ensure the plot is shown correctly with multiple plots
     # in a single Notebook cell.
-    plt.show()
+    # plt.show()
 
 
 def plot_distorted_image(image, cls_true):
@@ -555,8 +557,8 @@ plot_distorted_image(img, cls)
 
 # DEBUG
 # TODO(bufnal): optimize function
-if False:
-    optimize(num_iterations=1000)
+if True:
+    optimize(num_iterations=1)
 
 print_test_accuracy(show_example_errors=True,
                     show_confusion_matrix=True)
@@ -583,7 +585,7 @@ def plot_image(image):
 
     # Ensure the plot is shown correctly with multiple plots
     # in a single Notebook cell.
-    plt.show()
+    # plt.show()
 
 
 img, cls = get_test_image(16)
@@ -606,3 +608,4 @@ class_names[5]
 # This has been commented out in case you want to modify and experiment
 # with the Notebook without having to restart it.
 session.close()
+# plt.show()
