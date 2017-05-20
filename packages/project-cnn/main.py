@@ -1,131 +1,56 @@
-import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
-from sklearn.metrics import confusion_matrix
 import time
 from datetime import timedelta
-import math
 import os
 import prettytensor as pt
 
 # local imports
+import plot
+import tools
 from loader import img_size, num_channels, num_classes
-from plotting import plot_images
 from prepare_dataset import maybe_download_and_extract
 
 
-# class_names = loader.load_class_names()
-
-# images_test, cls_test, labels_test = loader.load_test_data()
-# images_train, cls_train, labels_train = loader.load_training_data()
-
 dataset = maybe_download_and_extract()
-class_names = dataset['class_names']
 images_train = dataset['test_images']
 labels_train = dataset['test_labels']
 images_test = dataset['test_images']
 labels_test = dataset['test_labels']
 cls_test = dataset['test_cls']
 
-print("Size of:")
-print("- Training-set:\t\t{}".format(len(images_train)))
-print("- Test-set:\t\t{}".format(len(images_test)))
+images_valid = dataset['valid_images']
+labels_valid = dataset['valid_labels']
+cls_valid = dataset['valid_cls']
 
+with tf.name_scope('inputs'):
+    x = tf.placeholder(tf.float32,
+                       shape=[None, img_size, img_size, num_channels],
+                       name='x')
+    y_true = tf.placeholder(tf.float32,
+                            shape=[None, num_classes],
+                            name='y_true')
+    y_true_cls = tf.argmax(y_true, dimension=1)
 
-img_size_cropped = 24
-
-# Get the first images from the test-set.
-images = images_test[0:9]
-# Get the true classes for those images.
-cls_true = cls_test[0:9]
-
-# Plot the images and labels using our helper-function above.
-plot_images(images=images, class_names=class_names,
-            cls_true=cls_true, smooth=False)
-plot_images(images=images, class_names=class_names,
-            cls_true=cls_true, smooth=True)
-
-x = tf.placeholder(tf.float32,
-                   shape=[None, img_size, img_size, num_channels],
-                   name='x')
-y_true = tf.placeholder(tf.float32, shape=[None, num_classes], name='y_true')
-y_true_cls = tf.argmax(y_true, dimension=1)
-
-
-def pre_process_image(image, training):
-    # This function takes a single image as input,
-    # and a boolean whether to build the training or testing graph.
-
-    if training:
-        # For training, add the following to the TensorFlow graph.
-        # Randomly crop the input image.
-        image = tf.random_crop(
-            image, size=[img_size_cropped, img_size_cropped, num_channels])
-
-        # Randomly flip the image horizontally.
-        image = tf.image.random_flip_left_right(image)
-
-        # Randomly adjust hue, contrast and saturation.
-        image = tf.image.random_hue(image, max_delta=0.05)
-        image = tf.image.random_contrast(image, lower=0.3, upper=1.0)
-        image = tf.image.random_brightness(image, max_delta=0.2)
-        image = tf.image.random_saturation(image, lower=0.0, upper=2.0)
-
-        # Some of these functions may overflow and result in pixel
-        # values beyond the [0, 1] range. It is unclear from the
-        # documentation of TensorFlow 0.10.0rc0 whether this is
-        # intended. A simple solution is to limit the range.
-
-        # Limit the image pixels between [0, 1] in case of overflow.
-        image = tf.minimum(image, 1.0)
-        image = tf.maximum(image, 0.0)
-    else:
-        # For training, add the following to the TensorFlow graph.
-        # Crop the input image around the centre so it is the same
-        # size as images that are randomly cropped during training.
-        image = tf.image.resize_image_with_crop_or_pad(
-            image,
-            target_height=img_size_cropped,
-            target_width=img_size_cropped
-        )
-
-    return image
-
-
-def pre_process(images, training):
-    # Use TensorFlow to loop over all the input images and call
-    # the function above which takes a single image as input.
-    images = tf.map_fn(
-        lambda image: pre_process_image(image, training),
-        images)
-
-    return images
-
-
-distorted_images = pre_process(images=x, training=True)
+distorted_images = tools.pre_process(images=x, training=True,
+                                     num_channels=num_channels,
+                                     img_size_cropped=24)
 
 
 def main_network(images, training):
     # Wrap the input images as a Pretty Tensor object.
-    x_pretty = pt.wrap(images)
+    seq = pt.wrap(images).sequential()
 
-    # Pretty Tensor uses special numbers to distinguish between
-    # the training and testing phases.
-    if training:
-        phase = pt.Phase.train
-    else:
-        phase = pt.Phase.infer
+    with pt.defaults_scope(activation_fn=tf.nn.relu):
+        with seq.subdivide(2) as inception_1:
+            inception_1[0].conv2d(kernel=1, depth=32, batch_normalize=True).conv2d(kernel=5, depth=64)
+            inception_1[1].conv2d(kernel=1, depth=64).conv2d(kernel=3, depth=128)
 
-    # Create the convolutional neural network using Pretty Tensor.
-    # It is very similar to the previous tutorials, except
-    # the use of so-called batch-normalization in the first layer.
-    with pt.defaults_scope(activation_fn=tf.nn.relu, phase=phase):
-        y_pred, loss = x_pretty.\
-            conv2d(kernel=5, depth=64, name='layer_conv1', batch_normalize=True).\
-            max_pool(kernel=2, stride=2).\
-            conv2d(kernel=5, depth=64, name='layer_conv2').\
-            max_pool(kernel=2, stride=2).\
-            flatten().\
+        with seq.subdivide(2) as inception_2:
+            inception_2[0].conv2d(kernel=3, depth=32).max_pool(kernel=2, stride=2)
+            inception_2[1].conv2d(kernel=5, depth=64).max_pool(kernel=2, stride=2)
+
+        y_pred, loss = seq.flatten().\
             fully_connected(size=256, name='layer_fc1').\
             fully_connected(size=128, name='layer_fc2').\
             softmax_classifier(num_classes=num_classes, labels=y_true)
@@ -136,7 +61,9 @@ def main_network(images, training):
 def create_network(training):
     # Wrap the neural network in the scope named 'network'.
     # Create new variables during training, and re-use during testing.
-    with tf.variable_scope('network', reuse=not training):
+    network_name = 'network' if not training else 'network_train'
+    # network_name = 'network'
+    with tf.variable_scope(network_name, reuse=not training):
         # Just rename the input placeholder variable for convenience.
         images = x
 
@@ -151,11 +78,11 @@ def create_network(training):
 
 global_step = tf.Variable(initial_value=0,
                           name='global_step', trainable=False)
-_, loss = create_network(training=True)
+y_pred, loss = create_network(training=True)
 
 optimizer = tf.train.GradientDescentOptimizer(learning_rate=1e-4).minimize(loss, global_step=global_step)
 
-y_pred, _ = create_network(training=False)
+# y_pred, _ = create_network(training=False)
 y_pred_cls = tf.argmax(y_pred, dimension=1)
 
 correct_prediction = tf.equal(y_pred_cls, y_true_cls)
@@ -163,45 +90,14 @@ accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 saver = tf.train.Saver()
 
-
-def get_weights_variable(layer_name):
-    # Retrieve an existing variable named 'weights' in the scope
-    # with the given layer_name.
-    # This is awkward because the TensorFlow function was
-    # really intended for another purpose.
-
-    with tf.variable_scope("network/" + layer_name, reuse=True):
-        variable = tf.get_variable('weights')
-
-    return variable
-
-
-weights_conv1 = get_weights_variable(layer_name='layer_conv1')
-weights_conv2 = get_weights_variable(layer_name='layer_conv2')
-
-
-def get_layer_output(layer_name):
-    # The name of the last operation of the convolutional layer.
-    # This assumes you are using Relu as the activation-function.
-    tensor_name = "network/" + layer_name + "/Relu:0"
-
-    # Get the tensor with this name.
-    tensor = tf.get_default_graph().get_tensor_by_name(tensor_name)
-
-    return tensor
-
-
-output_conv1 = get_layer_output(layer_name='layer_conv1')
-output_conv2 = get_layer_output(layer_name='layer_conv2')
-
 session = tf.Session()
 
-save_dir = 'checkpoints/'
+save_dir = 'logs/'
 
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
-save_path = os.path.join(save_dir, 'project_cnn')
+save_path = os.path.join(save_dir, 'model.ckpt')
 
 # Use TensorFlow to find the latest checkpoint - if any.
 last_chk_path = tf.train.latest_checkpoint(checkpoint_dir=save_dir)
@@ -286,6 +182,7 @@ def optimize(num_iterations):
                        global_step=global_step)
 
             print("Saved checkpoint.")
+            print_valid_accuracy()
 
     # Ending time.
     end_time = time.time()
@@ -295,56 +192,6 @@ def optimize(num_iterations):
 
     # Print the time-usage.
     print("Time usage: " + str(timedelta(seconds=int(round(time_dif)))))
-
-
-def plot_example_errors(cls_pred, correct):
-    # This function is called from print_test_accuracy() below.
-
-    # cls_pred is an array of the predicted class-number for
-    # all images in the test-set.
-
-    # correct is a boolean array whether the predicted class
-    # is equal to the true class for each image in the test-set.
-
-    # Negate the boolean array.
-    incorrect = (correct == False)
-    # Get the images from the test-set that have been
-    # incorrectly classified.
-    images = images_test[incorrect]
-
-    # Get the predicted classes for those images.
-    cls_pred = cls_pred[incorrect]
-
-    # Get the true classes for those images.
-    cls_true = cls_test[incorrect]
-    # Plot the first 9 images.
-    plot_images(images=images[0:9],
-                cls_true=cls_true[0:9],
-                cls_pred=cls_pred[0:9],
-                class_names=class_names)
-
-
-def plot_confusion_matrix(cls_pred):
-    # This is called from print_test_accuracy() below.
-
-    # cls_pred is an array of the predicted class-number for
-    # all images in the test-set.
-
-    # Get the confusion matrix using sklearn.
-    cm = confusion_matrix(y_true=cls_test,  # True class for test-set.
-                          y_pred=cls_pred)  # Predicted class.
-
-    # Print the confusion matrix as text.
-    for i in range(num_classes):
-        # Append the class-name to each line.
-        row = ''.join('%04s ' % x for x in cm[i])
-
-        class_name = " ({:>2}) {}".format(i, class_names[i])
-        print row + class_name
-
-    # Print the class-numbers for easy reference.
-    class_numbers = [" (%02s)" % i for i in range(num_classes)]
-    print("".join(class_numbers))
 
 
 # Split the data-set in batches of this size to limit RAM usage.
@@ -388,12 +235,6 @@ def predict_cls(images, labels, cls_true):
     return correct, cls_pred
 
 
-def predict_cls_test():
-    return predict_cls(images=images_test,
-                       labels=labels_test,
-                       cls_true=cls_test)
-
-
 def classification_accuracy(correct):
     # When averaging a boolean array, False means 0 and True means 1.
     # So we are calculating: number of True / len(correct) which is
@@ -404,12 +245,30 @@ def classification_accuracy(correct):
     return correct.mean(), correct.sum()
 
 
+def print_valid_accuracy():
+    correct, cls_pred = predict_cls(images=images_valid,
+                                    labels=labels_valid,
+                                    cls_true=cls_valid)
+
+    # Classification accuracy and the number of correct classifications.
+    acc, num_correct = classification_accuracy(correct)
+
+    # Number of images being classified.
+    num_images = len(correct)
+
+    # Print the accuracy.
+    msg = "Accuracy on Validation-Set: {0:.1%} ({1} / {2})"
+    print(msg.format(acc, num_correct, num_images))
+
+
 def print_test_accuracy(show_example_errors=False,
                         show_confusion_matrix=False):
 
     # For all the images in the test-set,
     # calculate the predicted classes and whether they are correct.
-    correct, cls_pred = predict_cls_test()
+    correct, cls_pred = predict_cls(images=images_test,
+                                    labels=labels_test,
+                                    cls_true=cls_test)
 
     # Classification accuracy and the number of correct classifications.
     acc, num_correct = classification_accuracy(correct)
@@ -424,188 +283,27 @@ def print_test_accuracy(show_example_errors=False,
     # Plot some examples of mis-classifications, if desired.
     if show_example_errors:
         print("Example errors:")
-        plot_example_errors(cls_pred=cls_pred, correct=correct)
+        plot.plot_example_errors(cls_pred=cls_pred, correct=correct)
 
     # Plot the confusion matrix, if desired.
     if show_confusion_matrix:
         print("Confusion Matrix:")
-        plot_confusion_matrix(cls_pred=cls_pred)
+        plot.plot_confusion_matrix(cls_pred=cls_pred)
 
 
-def plot_conv_weights(weights, input_channel=0):
-    # Assume weights are TensorFlow ops for 4-dim variables
-    # e.g. weights_conv1 or weights_conv2.
-
-    # Retrieve the values of the weight-variables from TensorFlow.
-    # A feed-dict is not necessary because nothing is calculated.
-    w = session.run(weights)
-
-    # Print statistics for the weights.
-    print("Min:  {0:.5f}, Max:   {1:.5f}".format(w.min(), w.max()))
-    print("Mean: {0:.5f}, Stdev: {1:.5f}".format(w.mean(), w.std()))
-
-    # Get the lowest and highest values for the weights.
-    # This is used to correct the colour intensity across
-    # the images so they can be compared with each other.
-    w_min = np.min(w)
-    w_max = np.max(w)
-    abs_max = max(abs(w_min), abs(w_max))
-
-    # Number of filters used in the conv. layer.
-    num_filters = w.shape[3]
-
-    # Number of grids to plot.
-    # Rounded-up, square-root of the number of filters.
-    num_grids = int(math.ceil(math.sqrt(num_filters)))
-
-    # Create figure with a grid of sub-plots.
-    fig, axes = plt.subplots(num_grids, num_grids)
-
-    # Plot all the filter-weights.
-    for i, ax in enumerate(axes.flat):
-        # Only plot the valid filter-weights.
-        if i < num_filters:
-            # Get the weights for the i'th filter of the input channel.
-            # The format of this 4-dim tensor is determined by the
-            # TensorFlow API. See Tutorial #02 for more details.
-            img = w[:, :, input_channel, i]
-
-            # Plot image.
-            ax.imshow(img, vmin=-abs_max, vmax=abs_max,
-                      interpolation='nearest', cmap='seismic')
-
-        # Remove ticks from the plot.
-        ax.set_xticks([])
-        ax.set_yticks([])
-
-    # Ensure the plot is shown correctly with multiple plots
-    # in a single Notebook cell.
-    # plt.show()
-
-
-def plot_layer_output(layer_output, image):
-    # Assume layer_output is a 4-dim tensor
-    # e.g. output_conv1 or output_conv2.
-
-    # Create a feed-dict which holds the single input image.
-    # Note that TensorFlow needs a list of images,
-    # so we just create a list with this one image.
-    feed_dict = {x: [image]}
-
-    # Retrieve the output of the layer after inputting this image.
-    values = session.run(layer_output, feed_dict=feed_dict)
-
-    # Get the lowest and highest values.
-    # This is used to correct the colour intensity across
-    # the images so they can be compared with each other.
-    values_min = np.min(values)
-    values_max = np.max(values)
-
-    # Number of image channels output by the conv. layer.
-    num_images = values.shape[3]
-
-    # Number of grid-cells to plot.
-    # Rounded-up, square-root of the number of filters.
-    num_grids = int(math.ceil(math.sqrt(num_images)))
-
-    # Create figure with a grid of sub-plots.
-    fig, axes = plt.subplots(num_grids, num_grids)
-
-    # Plot all the filter-weights.
-    for i, ax in enumerate(axes.flat):
-        # Only plot the valid image-channels.
-        if i < num_images:
-            # Get the images for the i'th output channel.
-            img = values[0, :, :, i]
-
-            # Plot image.
-            ax.imshow(img, vmin=values_min, vmax=values_max,
-                      interpolation='nearest', cmap='binary')
-
-        # Remove ticks from the plot.
-        ax.set_xticks([])
-        ax.set_yticks([])
-
-    # Ensure the plot is shown correctly with multiple plots
-    # in a single Notebook cell.
-    # plt.show()
-
-
-def plot_distorted_image(image, cls_true):
-    # Repeat the input image 9 times.
-    image_duplicates = np.repeat(image[np.newaxis, :, :, :], 9, axis=0)
-
-    # Create a feed-dict for TensorFlow.
-    feed_dict = {x: image_duplicates}
-
-    # Calculate only the pre-processing of the TensorFlow graph
-    # which distorts the images in the feed-dict.
-    result = session.run(distorted_images, feed_dict=feed_dict)
-
-    # Plot the images.
-    plot_images(images=result, cls_true=np.repeat(cls_true, 9),
-                class_names=class_names)
-
-
-def get_test_image(i):
-    return images_test[i, :, :, :], cls_test[i]
-
-
-img, cls = get_test_image(16)
-
-plot_distorted_image(img, cls)
-
-# DEBUG
 # TODO(bufnal): optimize function
-if True:
-    optimize(num_iterations=1)
+optimize(num_iterations=200)
 
 print_test_accuracy(show_example_errors=True,
                     show_confusion_matrix=True)
 
-plot_conv_weights(weights=weights_conv1, input_channel=0)
-plot_conv_weights(weights=weights_conv2, input_channel=1)
-
-
-def plot_image(image):
-    # Create figure with sub-plots.
-    fig, axes = plt.subplots(1, 2)
-
-    # References to the sub-plots.
-    ax0 = axes.flat[0]
-    ax1 = axes.flat[1]
-
-    # Show raw and smoothened images in sub-plots.
-    ax0.imshow(image, interpolation='nearest')
-    ax1.imshow(image, interpolation='spline16')
-
-    # Set labels.
-    ax0.set_xlabel('Raw')
-    ax1.set_xlabel('Smooth')
-
-    # Ensure the plot is shown correctly with multiple plots
-    # in a single Notebook cell.
-    # plt.show()
-
-
-img, cls = get_test_image(16)
-plot_image(img)
-
-plot_layer_output(output_conv1, image=img)
-plot_layer_output(output_conv2, image=img)
-
-label_pred, cls_pred = session.run([y_pred, y_pred_cls],
-                                   feed_dict={x: [img]})
 
 # Set the rounding options for numpy.
 np.set_printoptions(precision=3, suppress=True)
 
-# Print the predicted label.
-print(label_pred[0])
-class_names[3]
-class_names[5]
-
 # This has been commented out in case you want to modify and experiment
 # with the Notebook without having to restart it.
+log_dir = 'logs'
+log_dir_fullpath = os.path.join(os.getcwd(), log_dir)
+file_writer = tf.summary.FileWriter(log_dir_fullpath, session.graph)
 session.close()
-# plt.show()
