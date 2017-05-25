@@ -39,7 +39,8 @@ def create_pickle_dataset():
 
     dataset.setdefault('class_names', loader.labels)
 
-    pickle_dataset(dataset)
+    to_pickle(dataset)
+    return dataset
 
 
 def split_test_dataset(test_images, test_cls, test_labels):
@@ -75,7 +76,7 @@ def split_test_dataset(test_images, test_cls, test_labels):
     return dataset_dict
 
 
-def pickle_dataset(dataset_dict):
+def to_pickle(dataset_dict):
 
     pickle_path = 'data/dataset.pickle'
     pickle_fullpath = os.path.join(os.getcwd(), pickle_path)
