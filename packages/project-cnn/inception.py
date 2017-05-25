@@ -1,4 +1,5 @@
 from __future__ import division, print_function, absolute_import
+import os
 
 import tflearn
 from tflearn.layers.core import input_data, dropout, fully_connected
@@ -97,11 +98,16 @@ network = regression(loss, optimizer='momentum',
                      learning_rate=0.001,
                      name='target')
 
+log_dir = 'logs'
+checkpoint_path = log_dir + '/checkpoint'
+if not os.path.exists(log_dir):
+    os.mkdir(log_dir)
+
 # Train using classifier
 model = tflearn.DNN(network,
                     tensorboard_verbose=3,
-                    checkpoint_path='./checkpoints_inception/checkpoint',
-                    tensorboard_dir='./logs_inception')
+                    checkpoint_path=checkpoint_path,
+                    tensorboard_dir=log_dir)
 
 model.fit({'input': X}, {'target': Y},
           validation_set=({'input': X_valid}, {'target': Y_valid}),
