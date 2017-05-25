@@ -74,11 +74,14 @@ def get_layer_output(layer_name):
 
     return tensor
 
-
-
-
 #####################################
+
 # examples
+# line 26 main.py
+# distorted_images = tools.pre_process(images=x, training=True,
+#                                      num_channels=num_channels,
+#                                      img_size_cropped=24)
+
 # line 93 main.py
 # weights_conv1 = tools.get_weights_variable(layer_name='layer_conv1')
 # weights_conv2 = tools.get_weights_variable(layer_name='layer_conv2')

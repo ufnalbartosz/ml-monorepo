@@ -5,23 +5,17 @@ from datetime import timedelta
 import os
 import prettytensor as pt
 
+
 # local imports
 import plot
 import tools
 from loader import img_size, num_channels, num_classes
 from prepare_dataset import maybe_download_and_extract
 
-
 dataset = maybe_download_and_extract()
-images_train = dataset['test_images']
-labels_train = dataset['test_labels']
-images_test = dataset['test_images']
-labels_test = dataset['test_labels']
-cls_test = dataset['test_cls']
 
-images_valid = dataset['valid_images']
-labels_valid = dataset['valid_labels']
-cls_valid = dataset['valid_cls']
+# Size the images are cropped to before they enter the network.
+img_size_cropped = 24
 
 with tf.name_scope('inputs'):
     x = tf.placeholder(tf.float32,
@@ -32,16 +26,17 @@ with tf.name_scope('inputs'):
                             name='y_true')
     y_true_cls = tf.argmax(y_true, dimension=1)
 
-distorted_images = tools.pre_process(images=x, training=True,
-                                     num_channels=num_channels,
-                                     img_size_cropped=24)
-
 
 def main_network(images, training):
     # Wrap the input images as a Pretty Tensor object.
     seq = pt.wrap(images).sequential()
 
-    with pt.defaults_scope(activation_fn=tf.nn.relu):
+    # The phase tells Pretty Tensor whether this copy of the graph is the
+    # training one - batch-normalization has to use the moving averages
+    # instead of the batch statistics when we are only doing inference.
+    phase = pt.Phase.train if training else pt.Phase.infer
+
+    with pt.defaults_scope(activation_fn=tf.nn.relu, phase=phase):
         with seq.subdivide(2) as inception_1:
             inception_1[0].conv2d(kernel=1, depth=32, batch_normalize=True).conv2d(kernel=5, depth=64)
             inception_1[1].conv2d(kernel=1, depth=64).conv2d(kernel=3, depth=128)
@@ -61,14 +56,15 @@ def main_network(images, training):
 def create_network(training):
     # Wrap the neural network in the scope named 'network'.
     # Create new variables during training, and re-use during testing.
-    network_name = 'network' if not training else 'network_train'
-    # network_name = 'network'
-    with tf.variable_scope(network_name, reuse=not training):
-        # Just rename the input placeholder variable for convenience.
-        images = x
-
-        # Create TensorFlow graph for pre-processing.
-        images = pre_process(images=images, training=training)
+    with tf.variable_scope('network', reuse=not training):
+        # Create TensorFlow graph for pre-processing. During training the
+        # images are randomly distorted, during evaluation they are only
+        # cropped around the centre - otherwise the accuracy would be
+        # measured on randomly distorted images and would not be
+        # reproducible from one run to the next.
+        images = tools.pre_process(images=x, training=training,
+                                   img_size_cropped=img_size_cropped,
+                                   num_channels=num_channels)
 
         # Create TensorFlow graph for the main processing.
         y_pred, loss = main_network(images=images, training=training)
@@ -78,11 +74,15 @@ def create_network(training):
 
 global_step = tf.Variable(initial_value=0,
                           name='global_step', trainable=False)
-y_pred, loss = create_network(training=True)
+
+# Two copies of the graph sharing the same variables: the first one is
+# built for training and provides the loss we optimize, the second one is
+# built for inference and provides the predictions we measure.
+_, loss = create_network(training=True)
+y_pred, _ = create_network(training=False)
 
 optimizer = tf.train.GradientDescentOptimizer(learning_rate=1e-4).minimize(loss, global_step=global_step)
 
-# y_pred, _ = create_network(training=False)
 y_pred_cls = tf.argmax(y_pred, dimension=1)
 
 correct_prediction = tf.equal(y_pred_cls, y_true_cls)
@@ -121,12 +121,12 @@ else:
         print("Initializing variables instead.")
         session.run(tf.global_variables_initializer())
 
-train_batch_size = 64
 
-
-def random_batch():
+def random_batch(dataset, train_batch_size=64):
     # Number of images in the training-set.
-    num_images = len(images_train)
+    train_images = dataset['train_images']
+    train_labels = dataset['train_labels']
+    num_images = len(train_images)
 
     # Create a random index.
     idx = np.random.choice(num_images,
@@ -134,8 +134,8 @@ def random_batch():
                            replace=False)
 
     # Use the random index to select random images and labels.
-    x_batch = images_train[idx, :, :, :]
-    y_batch = labels_train[idx, :]
+    x_batch = train_images[idx, :, :, :]
+    y_batch = train_labels[idx, :]
 
     return x_batch, y_batch
 
@@ -148,7 +148,7 @@ def optimize(num_iterations):
         # Get a batch of training examples.
         # x_batch now holds a batch of images and
         # y_true_batch are the true labels for those images.
-        x_batch, y_true_batch = random_batch()
+        x_batch, y_true_batch = random_batch(dataset)
 
         # Put the batch into a dict with the proper names
         # for placeholder variables in the TensorFlow graph.
@@ -163,7 +163,7 @@ def optimize(num_iterations):
                                   feed_dict=feed_dict_train)
 
         # Print status to screen every 100 iterations (and last).
-        if (i_global % 100 == 0) or (i == num_iterations - 1):
+        if (i_global % 10 == 0) or (i == num_iterations - 1):
             # Calculate the accuracy on the training-batch.
             batch_acc = session.run(accuracy,
                                     feed_dict=feed_dict_train)
@@ -182,7 +182,7 @@ def optimize(num_iterations):
                        global_step=global_step)
 
             print("Saved checkpoint.")
-            print_valid_accuracy()
+            print_valid_accuracy(dataset)
 
     # Ending time.
     end_time = time.time()
@@ -245,10 +245,10 @@ def classification_accuracy(correct):
     return correct.mean(), correct.sum()
 
 
-def print_valid_accuracy():
-    correct, cls_pred = predict_cls(images=images_valid,
-                                    labels=labels_valid,
-                                    cls_true=cls_valid)
+def print_valid_accuracy(dataset):
+    correct, cls_pred = predict_cls(images=dataset['valid_images'],
+                                    labels=dataset['valid_labels'],
+                                    cls_true=dataset['valid_cls'])
 
     # Classification accuracy and the number of correct classifications.
     acc, num_correct = classification_accuracy(correct)
@@ -261,14 +261,15 @@ def print_valid_accuracy():
     print(msg.format(acc, num_correct, num_images))
 
 
-def print_test_accuracy(show_example_errors=False,
+def print_test_accuracy(dataset,
+                        show_example_errors=False,
                         show_confusion_matrix=False):
 
     # For all the images in the test-set,
     # calculate the predicted classes and whether they are correct.
-    correct, cls_pred = predict_cls(images=images_test,
-                                    labels=labels_test,
-                                    cls_true=cls_test)
+    correct, cls_pred = predict_cls(images=dataset['test_images'],
+                                    labels=dataset['test_labels'],
+                                    cls_true=dataset['test_cls'])
 
     # Classification accuracy and the number of correct classifications.
     acc, num_correct = classification_accuracy(correct)
@@ -283,18 +284,21 @@ def print_test_accuracy(show_example_errors=False,
     # Plot some examples of mis-classifications, if desired.
     if show_example_errors:
         print("Example errors:")
-        plot.plot_example_errors(cls_pred=cls_pred, correct=correct)
+        plot.plot_example_errors(cls_pred=cls_pred,
+                                 correct=correct,
+                                 dataset=dataset)
 
     # Plot the confusion matrix, if desired.
     if show_confusion_matrix:
         print("Confusion Matrix:")
-        plot.plot_confusion_matrix(cls_pred=cls_pred)
+        plot.plot_confusion_matrix(cls_pred=cls_pred, dataset=dataset)
 
 
 # TODO(bufnal): optimize function
-optimize(num_iterations=200)
+optimize(num_iterations=50)
 
-print_test_accuracy(show_example_errors=True,
+print_test_accuracy(dataset,
+                    show_example_errors=True,
                     show_confusion_matrix=True)
 
 
