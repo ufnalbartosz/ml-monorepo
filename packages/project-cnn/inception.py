@@ -105,17 +105,17 @@ if not os.path.exists(log_dir):
 
 # Train using classifier
 model = tflearn.DNN(network,
-                    tensorboard_verbose=3,
+                    tensorboard_verbose=2,
                     checkpoint_path=checkpoint_path,
                     tensorboard_dir=log_dir)
 
 model.fit({'input': X}, {'target': Y},
           validation_set=({'input': X_valid}, {'target': Y_valid}),
-          n_epoch=50,
+          n_epoch=1000,
           shuffle=True,
           show_metric=True,
           batch_size=96,
-          snapshot_step=200,
+          snapshot_step=500,
           snapshot_epoch=False,
           run_id='inception_model')
 
