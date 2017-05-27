@@ -98,16 +98,19 @@ network = regression(loss, optimizer='momentum',
                      learning_rate=0.001,
                      name='target')
 
-log_dir = 'logs'
-checkpoint_path = log_dir + '/checkpoint'
-if not os.path.exists(log_dir):
-    os.mkdir(log_dir)
+logdir = 'logs'
+checkpoint_dir = os.path.join(logdir, 'inception_checkpoints')
+if not os.path.exists(logdir):
+    os.mkdir(logdir)
+if not os.path.exists(checkpoint_dir):
+    os.mkdir(checkpoint_dir)
+checkpoint_path = os.path.join(checkpoint_dir, "checkpoint")
 
 # Train using classifier
 model = tflearn.DNN(network,
                     tensorboard_verbose=2,
                     checkpoint_path=checkpoint_path,
-                    tensorboard_dir=log_dir)
+                    tensorboard_dir=logdir)
 
 model.fit({'input': X}, {'target': Y},
           validation_set=({'input': X_valid}, {'target': Y_valid}),
