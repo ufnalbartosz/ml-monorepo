@@ -11,9 +11,7 @@ from tflearn.layers.estimator import regression
 from dataset import maybe_download_and_extract
 dataset = maybe_download_and_extract()
 train_images = dataset['train_images']
-print(train_images.shape, 'images train')
 train_labels = dataset['train_labels']
-print(train_labels.shape)
 test_images = dataset['test_images']
 test_labels = dataset['test_labels']
 
@@ -71,4 +69,5 @@ model.fit({'input': train_images},
 # num_test_images = test_images.shape[0]
 # accuracy = np.sum(np.equal(pred_labels, true_labels))
 
-# model.save('saves/model')
+print('Saving model...')
+model.save('saves/model')
