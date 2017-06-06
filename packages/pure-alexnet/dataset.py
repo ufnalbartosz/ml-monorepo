@@ -28,6 +28,11 @@ def maybe_download_and_extract():
     dataset_filepath = '17flowers/dataset.pickle'
     indexes_filepath = '17flowers/indexes.pickle'
 
+    dir_list = ['saves', 'logs', 'checkpoints']
+    for _dir in dir_list:
+        if not os.path.isdir(_dir):
+            os.mkdir(_dir)
+
     if os.path.exists(dataset_filepath):
         print("Loading pickle dataset")
         with open(dataset_filepath, 'rb') as fp:
