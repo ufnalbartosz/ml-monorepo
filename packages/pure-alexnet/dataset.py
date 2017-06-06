@@ -1,4 +1,3 @@
-import numpy as np
 import pickle
 import os
 
@@ -27,45 +26,50 @@ def create_readable_labels():
 
 def maybe_download_and_extract():
     dataset_filepath = '17flowers/dataset.pickle'
+    indexes_filepath = '17flowers/indexes.pickle'
 
     if os.path.exists(dataset_filepath):
+        print("Loading pickle dataset")
         with open(dataset_filepath, 'rb') as fp:
             dataset_dict = pickle.load(fp)
     else:
+        print("Creating pickle dataset")
         import tflearn.datasets.oxflower17 as oxflower17
 
         raw_images, raw_labels = oxflower17.load_data(one_hot=True, resize_pics=(227, 227))
 
-        images_number = raw_images.shape[0]
-        class_number = raw_labels.shape[1]  # 17
+        if os.path.exists(indexes_filepath):
+            with open(indexes_filepath, 'rb') as fp:
+                indexes_dict = pickle.load(fp)
+        else:
+            from indexes import create_pickle_indexes
+            indexes_dict = create_pickle_indexes()
+            with open(indexes_filepath, 'wb') as fp:
+                pickle.dump(indexes_dict, fp, pickle.HIGHEST_PROTOCOL)
 
-        label_counter = {}
-        for number in range(class_number):
-            label_counter[number] = images_number / class_number * 0.1  # 8
+        test_indexes = indexes_dict['test_indexes']
+        train_indexes = indexes_dict['train_indexes']
 
-        test_indexes = []
-        for it, (image, label) in enumerate(zip(raw_images, raw_labels)):
-            index = np.argmax(label)
-
-            if label_counter[index] > 0:
-                label_counter[index] -= 1
-                test_indexes.append(it)
-
+        print(len(test_indexes), 'test_indexes')
+        print(test_indexes)
         test_images = raw_images[test_indexes]
         test_labels = raw_labels[test_indexes]
 
-        train_indexes = [idx for idx in range(images_number) if idx not in test_images]
+        print(len(test_images), 'test images')
+
+        print(len(train_indexes), 'train_indexes')
         train_images = raw_images[train_indexes]
-        train_labels = raw_images[train_indexes]
+        train_labels = raw_labels[train_indexes]
 
         dataset_dict = {}
         dataset_dict.setdefault('test_images', test_images)
+        print(test_images.shape)
         dataset_dict.setdefault('test_labels', test_labels)
+        print(test_labels.shape)
         dataset_dict.setdefault('train_images', train_images)
+        print(train_images.shape)
         dataset_dict.setdefault('train_labels', train_labels)
-
-        print len(test_indexes)
-        print len(train_indexes)
+        print(train_labels.shape)
 
         with open(dataset_filepath, 'wb') as fp:
             pickle.dump(dataset_dict, fp, pickle.HIGHEST_PROTOCOL)
