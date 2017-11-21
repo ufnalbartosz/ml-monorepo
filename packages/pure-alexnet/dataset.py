@@ -1,79 +1,96 @@
 import pickle
 import os
+import shutil
 
+import numpy as np
 
-def create_readable_labels():
-    flower_dict = {}
-    flower_dict.setdefault(1, 'Buttercup')
-    flower_dict.setdefault(2, 'ColtsFoot')
-    flower_dict.setdefault(3, 'Daffodil')
-    flower_dict.setdefault(4, 'Daisy')
-    flower_dict.setdefault(5, 'Dandelion')
-    flower_dict.setdefault(6, 'Firitillary')
-    flower_dict.setdefault(7, 'Iris')
-    flower_dict.setdefault(8, 'Pansy')
-    flower_dict.setdefault(9, 'Sunflower')
-    flower_dict.setdefault(10, 'Windflower')
-    flower_dict.setdefault(11, 'Snowdrop')
-    flower_dict.setdefault(12, 'LilyValley')
-    flower_dict.setdefault(13, 'Bluebell')
-    flower_dict.setdefault(14, 'Crocus')
-    flower_dict.setdefault(15, 'Tigerlily')
-    flower_dict.setdefault(16, 'Tulip')
-    flower_dict.setdefault(17, 'Cowslip')
-    return flower_dict
+class DataSet():
 
+    def __init__(self):
+        self.dataset_filepath = '17flowers/dataset.pickle'
+        self.labels = [
+            'Buttercup', 'ColtsFoot', 'Daffodil', 'Daisy', 'Dandelion',
+            'Firitillary', 'Iris', 'Pansy', 'Sunflower', 'Windflower',
+            'Snowdrop', 'LilyValley', 'Bluebell', 'Crocus', 'Tigerlily',
+            'Cowslip'
+        ]
 
-def maybe_download_and_extract():
-    dataset_filepath = '17flowers/dataset.pickle'
-    indexes_filepath = '17flowers/indexes.pickle'
+    def train_test_valid_split(self, raw_labels):
+        images_number = raw_labels.shape[0]
+        class_number = raw_labels.shape[1]  # 17
 
-    dir_list = ['saves', 'logs', 'checkpoints']
-    for _dir in dir_list:
-        if not os.path.isdir(_dir):
-            print("Creating {} directory...".format(_dir))
-            os.mkdir(_dir)
+        test_label_counter = {}
+        for class_ in range(class_number):
+            test_label_counter[class_] = int(
+                images_number / class_number * 0.2)  # 16
 
-    if os.path.exists(dataset_filepath):
-        print("Loading pickle dataset")
-        with open(dataset_filepath, 'rb') as fp:
-            dataset_dict = pickle.load(fp)
-    else:
-        print("Creating pickle dataset")
-        import tflearn.datasets.oxflower17 as oxflower17
+        valid_label_counter = {}
+        for class_ in range(class_number):
+            valid_label_counter[class_] = int(
+                images_number / class_number * 0.1)  # 8
 
-        raw_images, raw_labels = oxflower17.load_data(one_hot=True, resize_pics=(227, 227))
+        test_indexes = []
+        valid_indexes = []
+        train_indexes = []
 
-        if os.path.exists(indexes_filepath):
-            with open(indexes_filepath, 'rb') as fp:
-                indexes_dict = pickle.load(fp)
+        for it, label in enumerate(raw_labels):
+            index = np.argmax(label)
+
+            if test_label_counter[index] > 0:
+                test_label_counter[index] -= 1
+                test_indexes.append(it)
+            elif valid_label_counter[index] > 0:
+                valid_label_counter[index] -= 1
+                valid_indexes.append(it)
+            else:
+                train_indexes.append(it)
+
+        return train_indexes, test_indexes, valid_indexes
+
+    def maybe_download_and_extract(self):
+        dir_list = ['saves', 'logs', 'checkpoints']
+        for _dir in dir_list:
+            if not os.path.isdir(_dir):
+                print("Creating {} directory...".format(_dir))
+                os.mkdir(_dir)
+
+        if os.path.exists(self.dataset_filepath):
+            print("Loading pickle dataset")
+            with open(self.dataset_filepath, 'rb') as fp:
+                dataset_dict = pickle.load(fp)
         else:
-            from indexes import create_pickle_indexes
+            print("Creating pickle dataset")
+            import tflearn.datasets.oxflower17 as oxflower17
 
-            indexes_dict = create_pickle_indexes()
-            with open(indexes_filepath, 'wb') as fp:
-                pickle.dump(indexes_dict, fp, pickle.HIGHEST_PROTOCOL)
+            raw_images, raw_labels = oxflower17.load_data(
+                one_hot=True, resize_pics=(227, 227))
 
-        test_indexes = indexes_dict['test_indexes']
-        train_indexes = indexes_dict['train_indexes']
+            train_ids, test_ids, valid_ids = self.train_test_valid_split(
+                raw_labels)
 
-        test_images = raw_images[test_indexes]
-        test_labels = raw_labels[test_indexes]
+            dataset_dict = {}
+            dataset_dict.setdefault('train_images', raw_images[train_ids])
+            dataset_dict.setdefault('train_labels', raw_labels[train_ids])
+            dataset_dict.setdefault('test_images', raw_images[test_ids])
+            dataset_dict.setdefault('test_labels', raw_labels[test_ids])
+            dataset_dict.setdefault('valid_images', raw_images[valid_ids])
+            dataset_dict.setdefault('valid_labels', raw_labels[valid_ids])
 
-        train_images = raw_images[train_indexes]
-        train_labels = raw_labels[train_indexes]
+            with open(self.dataset_filepath, 'wb') as fp:
+                pickle.dump(dataset_dict, fp, pickle.HIGHEST_PROTOCOL)
 
-        dataset_dict = {}
-        dataset_dict.setdefault('test_images', test_images)
-        dataset_dict.setdefault('test_labels', test_labels)
-        dataset_dict.setdefault('train_images', train_images)
-        dataset_dict.setdefault('train_labels', train_labels)
+            self.cleanup()
 
-        with open(dataset_filepath, 'wb') as fp:
-            pickle.dump(dataset_dict, fp, pickle.HIGHEST_PROTOCOL)
+        return dataset_dict
 
-    return dataset_dict
+    def cleanup(self):
+        dataset_dirname = os.path.dirname(self.dataset_filepath)
 
+        jpg_dir = os.path.join(dataset_dirname, 'jpg')
+        if os.path.exists(jpg_dir) and os.path.isdir(jpg_dir):
+            shutil.rmtree(jpg_dir)
 
-if __name__ == '__main__':
-    maybe_download_and_extract()
+        for extension in ['.tgz', '.pkl']:
+            filename = os.path.join(dataset_dirname, '17flowers' + extension)
+            if os.path.exists(filename):
+                os.remove(filename)

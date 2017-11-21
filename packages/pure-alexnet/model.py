@@ -1,18 +1,15 @@
 # -*- coding: utf-8 -*-
-#from __future__ import division, print_function, absolute_import
+from __future__ import division, print_function, absolute_import
 
+import numpy as np
 import tflearn
 from tflearn.layers.core import input_data, dropout, fully_connected
 from tflearn.layers.conv import conv_2d, max_pool_2d
 from tflearn.layers.normalization import local_response_normalization
 from tflearn.layers.estimator import regression
 
-from dataset import maybe_download_and_extract
-dataset = maybe_download_and_extract()
-train_images = dataset['train_images']
-train_labels = dataset['train_labels']
-test_images = dataset['test_images']
-test_labels = dataset['test_labels']
+from dataset import DataSet
+data = DataSet().maybe_download_and_extract()
 
 # Building 'AlexNet'
 network = input_data(shape=[None, 227, 227, 3], name='input')
@@ -48,29 +45,31 @@ model = tflearn.DNN(network,
                     tensorboard_dir='logs')
 
 # model.load('saves/model')
-# model.load('checkpoints/model-4000')
+model.load('checkpoints/model-2000')
 
-model.fit({'input': train_images},
-          {'target': train_labels},
-          n_epoch=150,
-          validation_set=({'input': test_images}, {'target': test_labels}),
-          shuffle=True,
-          show_metric=True,
-          batch_size=64,
-          snapshot_step=500,
-          snapshot_epoch=False,
-          run_id='model')
+# model.fit({'input': data['train_images']},
+#           {'target': data['train_labels']},
+#           n_epoch=150,
+#           validation_set=({'input': data['valid_images']}, {
+#                           'target': data['valid_labels']}),
+#           shuffle=True,
+#           show_metric=True,
+#           batch_size=64,
+#           snapshot_step=500,
+#           snapshot_epoch=False,
+#           run_id='model')
 
-# predicted_labels = model.predict(test_images)
+predicted_labels = model.predict(data['test_images'])
 
-# pred_labels = []
-# for row in predicted_labels:
-#     pred_labels.append(np.argmax(row))
-# true_labels = []
-# for row in test_labels:
-#     true_labels.append(np.argmax(row))
-# num_test_images = test_images.shape[0]
-# accuracy = np.sum(np.equal(pred_labels, true_labels))
+pred_labels = []
+for row in predicted_labels:
+    pred_labels.append(np.argmax(row))
+true_labels = []
+for row in data['test_labels']:
+    true_labels.append(np.argmax(row))
+accuracy = np.sum(np.equal(pred_labels, true_labels))
 
-print('Saving model...')
-model.save('saves/model')
+num_test_images = data['test_images'].shape[0]
+print(accuracy / len(true_labels))
+# print('Saving model...')
+# model.save('saves/model')
