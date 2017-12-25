@@ -1,3 +1,9 @@
+# fix python locale error: unsupported locale setting
+export LC_ALL="en_US.UTF-8"
+export LC_CTYPE="en_US.UTF-8"
+sudo dpkg-reconfigure locales
+
+# install pip and emacs
 sudo apt-get install python-pip
 sudo apt-get install emacs
 pip install --user --upgrade pip
