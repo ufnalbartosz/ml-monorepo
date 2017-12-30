@@ -44,32 +44,32 @@ model = tflearn.DNN(network,
                     tensorboard_verbose=3,
                     tensorboard_dir='logs')
 
-# model.load('saves/model')
+model.load('saves/model')
 # model.load('checkpoints/model-2000')
 
-model.fit({'input': data['train_images']},
-          {'target': data['train_labels']},
-          n_epoch=150,
-          validation_set=({'input': data['valid_images']}, {
-                          'target': data['valid_labels']}),
-          shuffle=True,
-          show_metric=True,
-          batch_size=64,
-          snapshot_step=500,
-          snapshot_epoch=False,
-          run_id='model')
+# model.fit({'input': data['train_images']},
+#           {'target': data['train_labels']},
+#           n_epoch=150,
+#           validation_set=({'input': data['valid_images']}, {
+#                           'target': data['valid_labels']}),
+#           shuffle=True,
+#           show_metric=True,
+#           batch_size=64,
+#           snapshot_step=500,
+#           snapshot_epoch=False,
+#           run_id='model')
 
-# predicted_labels = model.predict(data['test_images'])
+predicted_labels = model.predict(data['test_images'])
 
-# pred_labels = []
-# for row in predicted_labels:
-#     pred_labels.append(np.argmax(row))
-# true_labels = []
-# for row in data['test_labels']:
-#     true_labels.append(np.argmax(row))
-# accuracy = np.sum(np.equal(pred_labels, true_labels))
+pred_labels = []
+for row in predicted_labels:
+    pred_labels.append(np.argmax(row))
+true_labels = []
+for row in data['test_labels']:
+    true_labels.append(np.argmax(row))
+accuracy = np.sum(np.equal(pred_labels, true_labels))
 
-# num_test_images = data['test_images'].shape[0]
-# print(accuracy / len(true_labels))
-print('Saving model...')
-model.save('saves/model')
+num_test_images = data['test_images'].shape[0]
+print(accuracy / len(true_labels))
+# print('Saving model...')
+# model.save('saves/model')
