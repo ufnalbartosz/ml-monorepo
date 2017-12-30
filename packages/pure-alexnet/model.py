@@ -18,7 +18,7 @@ network = conv_2d(network, 96, 7, strides=1,
 network = max_pool_2d(network, 3, strides=2, name='max_pool1_3_3_2')
 # network = local_response_normalization(network)
 network = conv_2d(network, 128, 3, activation='relu', name='conv2_3_3')
-network = conv_2d(network, 128, 3, activation='relu', name='conv3_3_3')
+# network = conv_2d(network, 128, 3, activation='relu', name='conv3_3_3')
 network = max_pool_2d(network, 3, strides=2, name='max_pool2_3_3_2')
 # network = local_response_normalization(network)
 network = conv_2d(network, 128, 3, activation='relu', name='conv3_3_3')
