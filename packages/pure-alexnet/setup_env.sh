@@ -22,13 +22,19 @@ sudo apt-get install nvidia-387
 sudo apt-get install mesa-common-dev
 sudo apt-get install freeglut3-dev
 
+# reboot machine
+sudo reboot
+
 # install cuda 8.0
 wget https://developer.nvidia.com/compute/cuda/8.0/Prod2/local_installers/cuda_8.0.61_375.26_linux-run
 sudo bash cuda_8.0.61_375.26_linux-run
 
 # export cuda paths
 export PATH=/usr/local/cuda-8.0/bin${PATH:+:${PATH}}
+echo export PATH=/usr/local/cuda-8.0/bin${PATH:+:${PATH}} >> ~/.bashrc
 export LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+echo export LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}} >> ~/.bashrc
+source ~/.bashrc
 
 # install cudnn
 wget https://developer.nvidia.com/compute/machine-learning/cudnn/secure/v6/prod/8.0_20170307/cudnn-8.0-linux-x64-v6.0-tgz
@@ -41,3 +47,4 @@ sudo chmod a+r /usr/local/cuda/lib64/libcudnn*
 # install tf-gpu
 source activate tensorflow
 pip install --ignore-installed --upgrade https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow_gpu-1.4.0-cp36-cp36m-linux_x86_64.whl
+git clone https://github.com/ufnalbartosz/pure_alexnet .
