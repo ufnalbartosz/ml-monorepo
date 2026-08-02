@@ -1,0 +1,7 @@
+17flowers/
+checkpoints/
+logs/
+saves/
+.vscode/
+*.pyc
+#*
