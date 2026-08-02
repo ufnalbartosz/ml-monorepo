@@ -1,11 +1,171 @@
-.venv/
+# Based on github/gitignore Python.gitignore + Global/macOS.gitignore,
+# with project-specific additions at the bottom.
+#
+# Deliberately NOT ignored, though upstream leaves them commented:
+#   .python-version  - this workspace pins 3.12 on purpose (TensorFlow ships
+#                      only cp312/cp313 wheels), so the pin is committed.
+#   uv.lock          - a single shared lockfile is the point of this monorepo.
+#
+# Also omitted from the upstream list: lib/ and lib64/. Upstream ignores them as
+# build output, but they are plausible source directory names and this repo uses
+# a src/ layout, so ignoring them risks silently shadowing real code.
+
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
+*.py[codz]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
 *.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py.cover
+*.lcov
+.hypothesis/
 .pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Logs and local databases
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Sphinx documentation
+docs/_build/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# PEP 582
+__pypackages__/
+
+# Environments
+.env
+.envrc
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder / Rope project settings
+.spyderproject
+.spyproject
+.ropeproject
+
+# Editor scratch files (emacs "#file#", vim swap, generic backups).
+# Carried over from the imported per-package ignore files.
+#*
+*~
+*.swp
+*.swo
+
+# Editor / IDE directories. Upstream keeps these commented and defers to the
+# Global templates; enabled here because the imported packages already ignored
+# .vscode and this is a single-developer monorepo.
+.vscode/
+.idea/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre / pytype
+.pyre/
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# Ruff
 .ruff_cache/
+
+# PyPI configuration
+.pypirc
+
+# macOS
+.DS_Store
+.localized
+__MACOSX/
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.fseventsd
+.DocumentRevisions-V100
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.apdisk
+
+# macOS duplicate-file artifacts. This environment has repeatedly produced
+# copies named "<stem> 2" — both with an extension ("pyproject 2.toml",
+# "fmindfp 2.py") and without ("\.gitignore 2", "Makefile 2"). Both forms are
+# matched; the extensionless one is easy to miss, and did slip through an
+# earlier version of this file. None ever reached a commit.
+#
+# The digit class starts at 2 on purpose: macOS numbers duplicates from 2, so
+# "* [0-9]" would needlessly shadow legitimate names like "figure 1.png".
+* [2-9]
+* [2-9].*
+
+# --- Project-specific ---
+
+# Machine-learning run artifacts (project_cnn, pure_alexnet)
 logs/
 checkpoints/
 data/
 *.ckpt
 *.ckpt.*
+*.pkl
+*.tar.gz
+
+# TensorFlow / TensorBoard
+events.out.tfevents.*

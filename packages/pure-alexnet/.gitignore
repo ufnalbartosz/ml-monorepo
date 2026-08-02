@@ -1,7 +1,8 @@
+# Package-specific only. Shared Python/macOS/editor patterns live in the
+# repository-root .gitignore.
+
+# Oxford 17-category flower dataset, downloaded by dataset.py at runtime
 17flowers/
-checkpoints/
-logs/
+
+# tflearn model checkpoints written by model.py
 saves/
-.vscode/
-*.pyc
-#*
