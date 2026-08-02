@@ -16,82 +16,72 @@ from multiprocessing import Process
 def plot_graph(fig):
     fig.show()
 
-from PyQt4 import QtCore, QtGui
+from PyQt6 import QtCore, QtWidgets
 
-try:
-    _fromUtf8 = QtCore.QString.fromUtf8
-except AttributeError:
-    def _fromUtf8(s):
-        return s
 
-try:
-    _encoding = QtGui.QApplication.UnicodeUTF8
-    def _translate(context, text, disambig):
-        return QtGui.QApplication.translate(context, text, disambig, _encoding)
-except AttributeError:
-    def _translate(context, text, disambig):
-        return QtGui.QApplication.translate(context, text, disambig)
+def _translate(context, text, disambig=None):
+    return QtWidgets.QApplication.translate(context, text, disambig)
 
-class Ui_MainWindow(QtGui.QMainWindow):
+class Ui_MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super(self.__class__, self).__init__()
         self.setupUi(self)
 
     def setupUi(self, MainWindow):
-        MainWindow.setObjectName(_fromUtf8("MainWindow"))
+        MainWindow.setObjectName("MainWindow")
         MainWindow.resize(798, 600)
-        self.centralwidget = QtGui.QWidget(MainWindow)
-        self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
-        self.formLayoutWidget = QtGui.QWidget(self.centralwidget)
+        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget.setObjectName("centralwidget")
+        self.formLayoutWidget = QtWidgets.QWidget(self.centralwidget)
         self.formLayoutWidget.setGeometry(QtCore.QRect(20, 20, 371, 191))
-        self.formLayoutWidget.setObjectName(_fromUtf8("formLayoutWidget"))
-        self.formLayout = QtGui.QFormLayout(self.formLayoutWidget)
-        self.formLayout.setFieldGrowthPolicy(QtGui.QFormLayout.AllNonFixedFieldsGrow)
-        self.formLayout.setMargin(0)
-        self.formLayout.setObjectName(_fromUtf8("formLayout"))
-        self.cost_function = QtGui.QLineEdit(self.formLayoutWidget)
-        self.cost_function.setObjectName(_fromUtf8("cost_function"))
-        self.formLayout.setWidget(1, QtGui.QFormLayout.FieldRole, self.cost_function)
-        self.maxIteracjiLabel = QtGui.QLabel(self.formLayoutWidget)
-        self.maxIteracjiLabel.setObjectName(_fromUtf8("maxIteracjiLabel"))
-        self.formLayout.setWidget(3, QtGui.QFormLayout.LabelRole, self.maxIteracjiLabel)
-        self.max_iter = QtGui.QLineEdit(self.formLayoutWidget)
-        self.max_iter.setObjectName(_fromUtf8("max_iter"))
-        self.formLayout.setWidget(3, QtGui.QFormLayout.FieldRole, self.max_iter)
-        self.eplylonLabel = QtGui.QLabel(self.formLayoutWidget)
-        self.eplylonLabel.setObjectName(_fromUtf8("eplylonLabel"))
-        self.formLayout.setWidget(4, QtGui.QFormLayout.LabelRole, self.eplylonLabel)
-        self.epsilon = QtGui.QLineEdit(self.formLayoutWidget)
-        self.epsilon.setObjectName(_fromUtf8("epsilon"))
-        self.formLayout.setWidget(4, QtGui.QFormLayout.FieldRole, self.epsilon)
-        self.bDRNiczkowaniaLabel = QtGui.QLabel(self.formLayoutWidget)
-        self.bDRNiczkowaniaLabel.setObjectName(_fromUtf8("bDRNiczkowaniaLabel"))
-        self.formLayout.setWidget(5, QtGui.QFormLayout.LabelRole, self.bDRNiczkowaniaLabel)
-        self.div_err = QtGui.QLineEdit(self.formLayoutWidget)
-        self.div_err.setObjectName(_fromUtf8("div_err"))
-        self.formLayout.setWidget(5, QtGui.QFormLayout.FieldRole, self.div_err)
-        self.start_btn = QtGui.QPushButton(self.formLayoutWidget)
-        self.start_btn.setObjectName(_fromUtf8("start_btn"))
-        self.formLayout.setWidget(6, QtGui.QFormLayout.FieldRole, self.start_btn)
-        self.initial_cond = QtGui.QLineEdit(self.formLayoutWidget)
-        self.initial_cond.setObjectName(_fromUtf8("initial_cond"))
-        self.formLayout.setWidget(2, QtGui.QFormLayout.FieldRole, self.initial_cond)
-        self.funkcjaLabel_2 = QtGui.QLabel(self.formLayoutWidget)
-        self.funkcjaLabel_2.setObjectName(_fromUtf8("funkcjaLabel_2"))
-        self.formLayout.setWidget(1, QtGui.QFormLayout.LabelRole, self.funkcjaLabel_2)
-        self.maxIteracjiLabel_2 = QtGui.QLabel(self.formLayoutWidget)
-        self.maxIteracjiLabel_2.setObjectName(_fromUtf8("maxIteracjiLabel_2"))
-        self.formLayout.setWidget(2, QtGui.QFormLayout.LabelRole, self.maxIteracjiLabel_2)
-        self.txt_browser = QtGui.QTextBrowser(self.centralwidget)
+        self.formLayoutWidget.setObjectName("formLayoutWidget")
+        self.formLayout = QtWidgets.QFormLayout(self.formLayoutWidget)
+        self.formLayout.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        self.formLayout.setContentsMargins(0, 0, 0, 0)
+        self.formLayout.setObjectName("formLayout")
+        self.cost_function = QtWidgets.QLineEdit(self.formLayoutWidget)
+        self.cost_function.setObjectName("cost_function")
+        self.formLayout.setWidget(1, QtWidgets.QFormLayout.ItemRole.FieldRole, self.cost_function)
+        self.maxIteracjiLabel = QtWidgets.QLabel(self.formLayoutWidget)
+        self.maxIteracjiLabel.setObjectName("maxIteracjiLabel")
+        self.formLayout.setWidget(3, QtWidgets.QFormLayout.ItemRole.LabelRole, self.maxIteracjiLabel)
+        self.max_iter = QtWidgets.QLineEdit(self.formLayoutWidget)
+        self.max_iter.setObjectName("max_iter")
+        self.formLayout.setWidget(3, QtWidgets.QFormLayout.ItemRole.FieldRole, self.max_iter)
+        self.eplylonLabel = QtWidgets.QLabel(self.formLayoutWidget)
+        self.eplylonLabel.setObjectName("eplylonLabel")
+        self.formLayout.setWidget(4, QtWidgets.QFormLayout.ItemRole.LabelRole, self.eplylonLabel)
+        self.epsilon = QtWidgets.QLineEdit(self.formLayoutWidget)
+        self.epsilon.setObjectName("epsilon")
+        self.formLayout.setWidget(4, QtWidgets.QFormLayout.ItemRole.FieldRole, self.epsilon)
+        self.bDRNiczkowaniaLabel = QtWidgets.QLabel(self.formLayoutWidget)
+        self.bDRNiczkowaniaLabel.setObjectName("bDRNiczkowaniaLabel")
+        self.formLayout.setWidget(5, QtWidgets.QFormLayout.ItemRole.LabelRole, self.bDRNiczkowaniaLabel)
+        self.div_err = QtWidgets.QLineEdit(self.formLayoutWidget)
+        self.div_err.setObjectName("div_err")
+        self.formLayout.setWidget(5, QtWidgets.QFormLayout.ItemRole.FieldRole, self.div_err)
+        self.start_btn = QtWidgets.QPushButton(self.formLayoutWidget)
+        self.start_btn.setObjectName("start_btn")
+        self.formLayout.setWidget(6, QtWidgets.QFormLayout.ItemRole.FieldRole, self.start_btn)
+        self.initial_cond = QtWidgets.QLineEdit(self.formLayoutWidget)
+        self.initial_cond.setObjectName("initial_cond")
+        self.formLayout.setWidget(2, QtWidgets.QFormLayout.ItemRole.FieldRole, self.initial_cond)
+        self.funkcjaLabel_2 = QtWidgets.QLabel(self.formLayoutWidget)
+        self.funkcjaLabel_2.setObjectName("funkcjaLabel_2")
+        self.formLayout.setWidget(1, QtWidgets.QFormLayout.ItemRole.LabelRole, self.funkcjaLabel_2)
+        self.maxIteracjiLabel_2 = QtWidgets.QLabel(self.formLayoutWidget)
+        self.maxIteracjiLabel_2.setObjectName("maxIteracjiLabel_2")
+        self.formLayout.setWidget(2, QtWidgets.QFormLayout.ItemRole.LabelRole, self.maxIteracjiLabel_2)
+        self.txt_browser = QtWidgets.QTextBrowser(self.centralwidget)
         self.txt_browser.setGeometry(QtCore.QRect(20, 220, 371, 301))
-        self.txt_browser.setObjectName(_fromUtf8("txt_browser"))
+        self.txt_browser.setObjectName("txt_browser")
         MainWindow.setCentralWidget(self.centralwidget)
-        self.statusbar = QtGui.QStatusBar(MainWindow)
-        self.statusbar.setObjectName(_fromUtf8("statusbar"))
+        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
-        self.toolBar = QtGui.QToolBar(MainWindow)
-        self.toolBar.setObjectName(_fromUtf8("toolBar"))
-        MainWindow.addToolBar(QtCore.Qt.TopToolBarArea, self.toolBar)
+        self.toolBar = QtWidgets.QToolBar(MainWindow)
+        self.toolBar.setObjectName("toolBar")
+        MainWindow.addToolBar(QtCore.Qt.ToolBarArea.TopToolBarArea, self.toolBar)
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
@@ -166,7 +156,7 @@ class Ui_MainWindow(QtGui.QMainWindow):
 import sys
 
 if __name__ == '__main__':
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     ex = Ui_MainWindow()
     ex.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
