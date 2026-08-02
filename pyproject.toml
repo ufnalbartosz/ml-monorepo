@@ -1,0 +1,20 @@
+[project]
+name = "ml-monorepo"
+version = "0.1.0"
+description = "Consolidated machine learning and numerical optimization projects"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+
+[tool.uv.workspace]
+members = []
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.9",
+]
