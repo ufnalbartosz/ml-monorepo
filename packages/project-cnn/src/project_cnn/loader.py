@@ -7,7 +7,7 @@ import tarfile
 import zipfile
 
 
-from dataset import one_hot_encoded
+from project_cnn.dataset import one_hot_encoded
 data_path = "data/CIFAR-100/"
 data_url = "https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz"
 

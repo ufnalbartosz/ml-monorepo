@@ -20,7 +20,7 @@
 
 import numpy as np
 import os
-from cache import cache
+from project_cnn.cache import cache
 
 ########################################################################
 

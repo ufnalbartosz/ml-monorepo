@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 # local imports
-import loader
+from project_cnn import loader
 
 
 def maybe_download_and_extract():

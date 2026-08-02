@@ -20,8 +20,8 @@ from tflearn.layers.conv import conv_2d, max_pool_2d
 from tflearn.layers.normalization import local_response_normalization
 from tflearn.layers.estimator import regression
 
-from loader import img_size, num_channels, num_classes
-from prepare_dataset import maybe_download_and_extract
+from project_cnn.loader import img_size, num_channels, num_classes
+from project_cnn.prepare_dataset import maybe_download_and_extract
 
 dataset = maybe_download_and_extract()
 X = dataset['train_images']

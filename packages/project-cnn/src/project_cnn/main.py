@@ -7,10 +7,10 @@ import prettytensor as pt
 
 
 # local imports
-import plot
-import tools
-from loader import img_size, num_channels, num_classes
-from prepare_dataset import maybe_download_and_extract
+from project_cnn import plot
+from project_cnn import tools
+from project_cnn.loader import img_size, num_channels, num_classes
+from project_cnn.prepare_dataset import maybe_download_and_extract
 
 dataset = maybe_download_and_extract()
 

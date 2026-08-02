@@ -11,8 +11,8 @@ from tflearn.data_preprocessing import ImagePreprocessing
 from tflearn.data_augmentation import ImageAugmentation
 
 # Data loading and preprocessing
-from loader import num_classes
-from prepare_dataset import maybe_download_and_extract
+from project_cnn.loader import num_classes
+from project_cnn.prepare_dataset import maybe_download_and_extract
 
 dataset = maybe_download_and_extract()
 X = dataset['train_images']
