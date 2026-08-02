@@ -8,7 +8,7 @@ from tflearn.layers.conv import conv_2d, max_pool_2d
 from tflearn.layers.normalization import local_response_normalization
 from tflearn.layers.estimator import regression
 
-from dataset import DataSet
+from pure_alexnet.dataset import DataSet
 data = DataSet().maybe_download_and_extract()
 
 # Building 'AlexNet'
