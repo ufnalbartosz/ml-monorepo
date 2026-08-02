@@ -3,16 +3,17 @@ name = "ml-monorepo"
 version = "0.1.0"
 description = "Consolidated machine learning and numerical optimization projects"
 requires-python = ">=3.12"
-dependencies = ["nadaraya-watson"]
+dependencies = ["nadaraya-watson", "pure-alexnet"]
 
 [tool.uv]
 package = false
 
 [tool.uv.sources]
 nadaraya-watson = { workspace = true }
+pure-alexnet = { workspace = true }
 
 [tool.uv.workspace]
-members = ["packages/nadaraya-watson"]
+members = ["packages/nadaraya-watson", "packages/pure-alexnet"]
 
 [dependency-groups]
 dev = [
