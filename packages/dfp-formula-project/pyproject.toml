@@ -5,7 +5,6 @@ description = "DFP quasi-Newton optimizer with a Qt GUI and 3D surface plots"
 requires-python = ">=3.12"
 dependencies = [
     "PyQt6>=6.7",
-    "mayavi>=4.8.3",
     "matplotlib>=3.11.1",
     "numpy>=2.5.1",
     "py-expression-eval>=0.3.14",
