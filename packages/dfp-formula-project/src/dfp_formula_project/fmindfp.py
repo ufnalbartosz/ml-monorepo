@@ -1,34 +1,37 @@
 #!/usr/bin/env python
-from __future__ import division, print_function, absolute_import
-
-import warnings
-import sys
 import numpy
-from scipy._lib.six import callable
-from numpy import (atleast_1d, eye, mgrid, argmin, zeros, shape, squeeze,
-                   vectorize, asarray, sqrt, Inf, asfarray, isinf)
+from numpy import asarray, inf, isinf
 import numpy as np
 
-from scipy.optimize.linesearch import (line_search_wolfe1, line_search_wolfe2,
-                         line_search_wolfe2 as line_search,
-                         LineSearchWarning)
-from scipy._lib._util import getargspec_no_self as _getargspec
+from scipy.optimize._optimize import (_epsilon, approx_fprime,
+                                      _check_unknown_options, vecnorm,
+                                      _LineSearchError, _line_search_wolfe12,
+                                      OptimizeResult)
 
 
-#from scipy.optimize.optimize import (_epsilon, rosen, rosen_der, _check_unknown_options,
-#                                     wrap_function, vecnorm, _LineSearchError, _line_search_wolfe12,
-#                                     OptimizeResult, approx_fprime, _status_message)
+def wrap_function(function, args):
+    """Count calls to `function`.
 
-from scipy.optimize.optimize import (_epsilon, rosen, approx_fprime, _check_unknown_options,
-                                     wrap_function, vecnorm, _LineSearchError, _line_search_wolfe12,
-                                     OptimizeResult, _status_message)
+    Vendored from scipy, which removed it from both the public and private API.
+    Returns a one-element list holding the call count, and the wrapper itself.
+    """
+    ncalls = [0]
+    if function is None:
+        return ncalls, None
+
+    def function_wrapper(*wrapper_args):
+        ncalls[0] += 1
+        return function(*(wrapper_args + args))
+
+    return ncalls, function_wrapper
+
 _status_message = {
     'maxiter' : "Maksymalna liczba iteracji zostala oiagnieta",
     'success' : "Wykonanie algorytmu zakonczylo sie powodzeniem",
     'pr_loss' : "Napotkano nieznany blad wziazany z utrata precyzji"
 }
 
-def fmindfp(f, x0, fprime=None, args=(), gtol=1e-5, xtol=1e-09, fxtol=1e-09, norm=Inf,
+def fmindfp(f, x0, fprime=None, args=(), gtol=1e-5, xtol=1e-09, fxtol=1e-09, norm=inf,
               epsilon=_epsilon, maxiter=None, full_output=False, disp=False,
               retall=True, callback=None):
 
@@ -57,7 +60,7 @@ def fmindfp(f, x0, fprime=None, args=(), gtol=1e-5, xtol=1e-09, fxtol=1e-09, nor
 
 
 def _minimize(fun, x0, args=(), jac=None, callback=None,
-                   gtol=1e-5, fxtol=1e-09, xtol=1e-09, norm=Inf,
+                   gtol=1e-5, fxtol=1e-09, xtol=1e-09, norm=inf,
                    eps=_epsilon, maxiter=None, disp=False,
                    return_all=False, **unknown_options):
 
@@ -90,8 +93,8 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
     sk = [2 * gtol]
     warnflag = 0
     gnorm = vecnorm(gfk, ord=norm)
-    xnorm = np.Inf
-    fx = np.Inf
+    xnorm = np.inf
+    fx = np.inf
     print_lst = []
     while (gnorm > gtol) and (xnorm > xtol) and (fx > fxtol) and (k < maxiter):
         pk = -numpy.dot(Hk, gfk)
