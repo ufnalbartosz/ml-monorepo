@@ -116,14 +116,14 @@ class Figure():
         plt.show()
 
 if __name__ == '__main__':
-    from function import Function
-    from test_functions import *
+    from dfp_formula_project.function import Function
+    from dfp_formula_project.test_functions import *
 
     given_function = t1
     fun = Function(given_function)
 
 
-    from fmindfp import fmindfp
+    from dfp_formula_project.fmindfp import fmindfp
     x0 = t11
     x = fmindfp(fun, x0, maxiter=10000, disp=True)
 

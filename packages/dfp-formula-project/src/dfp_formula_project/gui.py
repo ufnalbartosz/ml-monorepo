@@ -6,9 +6,9 @@
 #      by: PyQt4 UI code generator 4.11.3
 #
 # WARNING! All changes made in this file will be lost!
-from function import Function
-from figure import Figure
-from fmindfp import fmindfp
+from dfp_formula_project.function import Function
+from dfp_formula_project.figure import Figure
+from dfp_formula_project.fmindfp import fmindfp
 import numpy as np
 
 from multiprocessing import Process

@@ -19,12 +19,12 @@ class Function(object):
 
 
 if __name__ == '__main__':
-    from test_functions import *
+    from dfp_formula_project.test_functions import *
 
     fun = Function(f2)
     x = (1, 2)
 
-    from fmindfp import *
+    from dfp_formula_project.fmindfp import *
     x0 = [0.4, -0.6]
     x = fmindfp(fun, x0, maxiter=10000, disp=True)
     print(x, x0)

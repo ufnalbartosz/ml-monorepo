@@ -2,8 +2,8 @@
 
 if __name__ == '__main__':
     #start GUI, get data from GUI;
-    from function import Function
-    from test_functions import *
+    from dfp_formula_project.function import Function
+    from dfp_formula_project.test_functions import *
     given_function = f4
     fun = Function(given_function)
 
@@ -16,14 +16,14 @@ if __name__ == '__main__':
 
     #TODO: zmienic algorytm bfgs na dfp
 
-    from fmindfp import fmindfp
+    from dfp_formula_project.fmindfp import fmindfp
     x0 = [0.4, -0.6]
     x = fmindfp(fun, x0, maxiter=10000, disp=False)
 
 
     # rysowanie wykresow 3d w myjavi, plus warstwice i wektor
     # olicoznych punktow kolejnych osiagnietych wattosci funckji.
-    from figure import Figure
+    from dfp_formula_project.figure import Figure
     import numpy as np
 
     vec = np.asanyarray(x[1])

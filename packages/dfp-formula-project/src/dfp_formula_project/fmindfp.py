@@ -212,8 +212,8 @@ if __name__ == "__main__":
     algor = []
     x0 = [0.4, -0.6]
 
-    from function import Function
-    from test_functions import *
+    from dfp_formula_project.function import Function
+    from dfp_formula_project.test_functions import *
     fun = Function(f2)
 
     start = time.time()
