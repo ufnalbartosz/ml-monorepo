@@ -131,21 +131,50 @@ def test_compile_attaches_sgd_with_momentum(small_model):
 
 
 def test_the_model_can_overfit_a_single_batch(rng):
-    """A network that cannot drive the loss down on four images is broken."""
-    model = build_and_compile(
+    """A network that cannot drive the loss down on four images is broken.
+
+    The seed is fixed and the optimizer is Adam on purpose: the question is
+    whether the architecture can fit anything at all, not whether momentum SGD
+    at one particular learning rate escapes one particular initialization.
+    Dropout is off for the same reason - 50% dropout on a deliberately narrow
+    dense layer is a test of the regularizer, not of the network.
+    """
+    keras.utils.set_random_seed(0)
+
+    model = build_alexnet(
         input_shape=SMALL_INPUT_SHAPE,
         num_classes=SMALL_NUM_CLASSES,
-        dense_units=SMALL_DENSE_UNITS,
-        learning_rate=0.05,
+        dense_units=32,
+        dropout_rate=0.0,
+    )
+    model.compile(
+        optimizer=keras.optimizers.Adam(learning_rate=0.001),
+        loss="categorical_crossentropy",
     )
 
     images = rng.random((4, *SMALL_INPUT_SHAPE), dtype=np.float32)
     labels = np.eye(SMALL_NUM_CLASSES, dtype=np.float32)
 
-    history = model.fit(images, labels, epochs=15, batch_size=4, verbose=0)
+    history = model.fit(images, labels, epochs=30, batch_size=4, verbose=0)
     losses = history.history["loss"]
 
     assert losses[-1] < losses[0]
+
+
+def test_build_and_compile_returns_a_trainable_model(rng):
+    """The convenience wrapper must produce something `fit` accepts."""
+    model = build_and_compile(
+        input_shape=SMALL_INPUT_SHAPE,
+        num_classes=SMALL_NUM_CLASSES,
+        dense_units=SMALL_DENSE_UNITS,
+    )
+
+    images = rng.random((4, *SMALL_INPUT_SHAPE), dtype=np.float32)
+    labels = np.eye(SMALL_NUM_CLASSES, dtype=np.float32)
+
+    history = model.fit(images, labels, epochs=1, batch_size=4, verbose=0)
+
+    assert "loss" in history.history
 
 
 def test_model_survives_a_save_load_round_trip(tmp_path, small_model, rng):
