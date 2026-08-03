@@ -1,86 +1,69 @@
-# -*- coding: utf-8 -*-
+"""AlexNet applied to the 20-class subset of CIFAR-100 selected in loader.py.
 
-""" AlexNet.
-Applying 'AlexNet' to the 20-class subset of CIFAR-100 selected in loader.py.
+Ported from tflearn to Keras 3.  The module used to build the graph, download
+the data-set and run 100 epochs at import time; it now only describes the
+architecture.
+
 References:
     - Alex Krizhevsky, Ilya Sutskever & Geoffrey E. Hinton. ImageNet
-    Classification with Deep Convolutional Neural Networks. NIPS, 2012.
+      Classification with Deep Convolutional Neural Networks. NIPS, 2012.
     - CIFAR-100 Dataset. Alex Krizhevsky.
+
 Links:
     - [AlexNet Paper](http://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf)
     - [CIFAR-100 Dataset](https://www.cs.toronto.edu/~kriz/cifar.html)
 """
 
-from __future__ import division, print_function, absolute_import
-import os
+from __future__ import annotations
 
-import tflearn
-from tflearn.layers.core import input_data, dropout, fully_connected
-from tflearn.layers.conv import conv_2d, max_pool_2d
-from tflearn.layers.normalization import local_response_normalization
-from tflearn.layers.estimator import regression
+import keras
+from keras import layers
 
-from project_cnn.loader import img_size, num_channels, num_classes
-from project_cnn.prepare_dataset import maybe_download_and_extract
+from project_cnn.layers import LocalResponseNormalization
 
-dataset = maybe_download_and_extract()
-X = dataset['train_images']
-Y = dataset['train_labels']
+DEFAULT_INPUT_SHAPE: tuple[int, int, int] = (32, 32, 3)
+DEFAULT_NUM_CLASSES = 20
+DEFAULT_DENSE_UNITS = 4096
 
-# Use the validation-set for monitoring during training. The test-set must
-# stay untouched until the final measurement, otherwise picking a snapshot
-# based on it leaks the test-set into model selection.
-X_valid = dataset['valid_images']
-Y_valid = dataset['valid_labels']
 
-# Building 'AlexNet'
-network = input_data(shape=[None, img_size, img_size, num_channels])
-network = conv_2d(network, 96, 3, strides=1, activation='relu')
-network = max_pool_2d(network, 3, strides=2)
-network = local_response_normalization(network)
-network = conv_2d(network, 256, 5, activation='relu')
-network = max_pool_2d(network, 3, strides=2)
-network = local_response_normalization(network)
-network = conv_2d(network, 384, 3, activation='relu')
-network = conv_2d(network, 384, 3, activation='relu')
-network = conv_2d(network, 256, 3, activation='relu')
-network = max_pool_2d(network, 3, strides=2)
-network = local_response_normalization(network)
-network = fully_connected(network, 4096, activation='tanh')
-network = dropout(network, 0.5)
-network = fully_connected(network, 4096, activation='tanh')
-network = dropout(network, 0.5)
-network = fully_connected(network, num_classes, activation='softmax')
-network = regression(network, optimizer='momentum',
-                     loss='categorical_crossentropy',
-                     learning_rate=0.001)
+def build_alexnet(
+    input_shape: tuple[int, int, int] = DEFAULT_INPUT_SHAPE,
+    num_classes: int = DEFAULT_NUM_CLASSES,
+    dense_units: int = DEFAULT_DENSE_UNITS,
+    dropout_rate: float = 0.5,
+    name: str = "alexnet",
+) -> keras.Model:
+    """Build AlexNet for 32x32 CIFAR images.
 
-# TensorFlow does not create the directories it writes checkpoints to, so
-# make them here. Keep them under 'logs/' like the inception model does -
-# that path is already covered by .gitignore.
-logdir = 'logs'
-checkpoint_dir = os.path.join(logdir, 'alexnet_checkpoints')
-if not os.path.exists(logdir):
-    os.mkdir(logdir)
-if not os.path.exists(checkpoint_dir):
-    os.mkdir(checkpoint_dir)
-checkpoint_path = os.path.join(checkpoint_dir, 'model_alexnet')
+    ``dense_units`` is an argument rather than a hard-coded 4096 so that tests
+    can build the same structure at a size that fits in a test run.
+    """
+    if num_classes < 1:
+        raise ValueError("num_classes must be at least 1")
+    if not 0.0 <= dropout_rate < 1.0:
+        raise ValueError("dropout_rate must be in [0, 1)")
 
-# Training
-model = tflearn.DNN(network,
-                    checkpoint_path=checkpoint_path,
-                    max_checkpoints=1,
-                    tensorboard_verbose=2,
-                    tensorboard_dir=logdir)
+    inputs = keras.Input(shape=input_shape, name="input")
 
-model.fit(X, Y,
-          validation_set=(X_valid, Y_valid),
-          batch_size=64,
-          n_epoch=100,
-          shuffle=True,
-          show_metric=True,
-          snapshot_step=500,
-          snapshot_epoch=False,
-          run_id='model_alexnet')
+    x = layers.Conv2D(96, 3, strides=1, padding="same", activation="relu", name="conv1")(inputs)
+    x = layers.MaxPooling2D(3, strides=2, padding="same", name="pool1")(x)
+    x = LocalResponseNormalization(name="lrn1")(x)
 
-model.save(os.path.join(logdir, 'alexnet_model_save'))
+    x = layers.Conv2D(256, 5, padding="same", activation="relu", name="conv2")(x)
+    x = layers.MaxPooling2D(3, strides=2, padding="same", name="pool2")(x)
+    x = LocalResponseNormalization(name="lrn2")(x)
+
+    x = layers.Conv2D(384, 3, padding="same", activation="relu", name="conv3")(x)
+    x = layers.Conv2D(384, 3, padding="same", activation="relu", name="conv4")(x)
+    x = layers.Conv2D(256, 3, padding="same", activation="relu", name="conv5")(x)
+    x = layers.MaxPooling2D(3, strides=2, padding="same", name="pool3")(x)
+    x = LocalResponseNormalization(name="lrn3")(x)
+
+    x = layers.Flatten(name="flatten")(x)
+    x = layers.Dense(dense_units, activation="tanh", name="fc1")(x)
+    x = layers.Dropout(dropout_rate, name="dropout1")(x)
+    x = layers.Dense(dense_units, activation="tanh", name="fc2")(x)
+    x = layers.Dropout(dropout_rate, name="dropout2")(x)
+    outputs = layers.Dense(num_classes, activation="softmax", name="target")(x)
+
+    return keras.Model(inputs=inputs, outputs=outputs, name=name)

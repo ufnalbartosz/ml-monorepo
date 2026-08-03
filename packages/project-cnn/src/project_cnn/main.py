@@ -1,313 +1,191 @@
-import tensorflow as tf
+"""Training entrypoint for the CIFAR-100 subset models.
+
+The TF1 version of this file was a script: importing it built placeholders,
+built the graph twice under a reusing variable scope, opened a
+``tf.Session``, restored a checkpoint, trained for 50 iterations and printed a
+confusion matrix - all at module level, with the graph handles kept in globals
+that the other functions closed over.
+
+It is now a normal CLI over three interchangeable model builders::
+
+    uv run python -m project_cnn.main --model dual-path --epochs 20
+    uv run python -m project_cnn.main --model inception --epochs 20
+    uv run python -m project_cnn.main --model alexnet --epochs 20
+    uv run python -m project_cnn.main --help
+
+Every step is a function that takes its inputs as arguments, so the pipeline
+can be exercised on synthetic data in a test.
+"""
+
+from __future__ import annotations
+
+import argparse
+from collections.abc import Callable, Sequence
+from pathlib import Path
+
+import keras
 import numpy as np
-import time
-from datetime import timedelta
-import os
-import prettytensor as pt
+
+from project_cnn.alexnet_model import build_alexnet
+from project_cnn.dual_path import build_dual_path
+from project_cnn.evaluate import print_test_accuracy, print_valid_accuracy
+from project_cnn.inception import build_inception
+from project_cnn.prepare_dataset import DEFAULT_DATASET_PATH, load_dataset
+
+#: Model name -> builder. Each builder takes (input_shape, num_classes).
+MODEL_BUILDERS: dict[str, Callable[..., keras.Model]] = {
+    "dual-path": build_dual_path,
+    "inception": build_inception,
+    "alexnet": build_alexnet,
+}
+
+DEFAULT_LEARNING_RATE = 1e-4
+DEFAULT_BATCH_SIZE = 64
 
 
-# local imports
-from project_cnn import plot
-from project_cnn import tools
-from project_cnn.loader import img_size, num_channels, num_classes
-from project_cnn.prepare_dataset import maybe_download_and_extract
+def build_model(
+    model_name: str,
+    input_shape: tuple[int, int, int],
+    num_classes: int,
+    **kwargs,
+) -> keras.Model:
+    """Build one of the three architectures by name."""
+    try:
+        builder = MODEL_BUILDERS[model_name]
+    except KeyError:
+        known = ", ".join(sorted(MODEL_BUILDERS))
+        raise ValueError(f"Unknown model {model_name!r}; expected one of: {known}") from None
 
-dataset = maybe_download_and_extract()
-
-# Size the images are cropped to before they enter the network.
-img_size_cropped = 24
-
-with tf.name_scope('inputs'):
-    x = tf.placeholder(tf.float32,
-                       shape=[None, img_size, img_size, num_channels],
-                       name='x')
-    y_true = tf.placeholder(tf.float32,
-                            shape=[None, num_classes],
-                            name='y_true')
-    y_true_cls = tf.argmax(y_true, dimension=1)
+    return builder(input_shape=input_shape, num_classes=num_classes, **kwargs)
 
 
-def main_network(images, training):
-    # Wrap the input images as a Pretty Tensor object.
-    seq = pt.wrap(images).sequential()
-
-    # The phase tells Pretty Tensor whether this copy of the graph is the
-    # training one - batch-normalization has to use the moving averages
-    # instead of the batch statistics when we are only doing inference.
-    phase = pt.Phase.train if training else pt.Phase.infer
-
-    with pt.defaults_scope(activation_fn=tf.nn.relu, phase=phase):
-        with seq.subdivide(2) as inception_1:
-            inception_1[0].conv2d(kernel=1, depth=32, batch_normalize=True).conv2d(kernel=5, depth=64)
-            inception_1[1].conv2d(kernel=1, depth=64).conv2d(kernel=3, depth=128)
-
-        with seq.subdivide(2) as inception_2:
-            inception_2[0].conv2d(kernel=3, depth=32).max_pool(kernel=2, stride=2)
-            inception_2[1].conv2d(kernel=5, depth=64).max_pool(kernel=2, stride=2)
-
-        y_pred, loss = seq.flatten().\
-            fully_connected(size=256, name='layer_fc1').\
-            fully_connected(size=128, name='layer_fc2').\
-            softmax_classifier(num_classes=num_classes, labels=y_true)
-
-        return y_pred, loss
+def compile_model(
+    model: keras.Model,
+    learning_rate: float = DEFAULT_LEARNING_RATE,
+) -> keras.Model:
+    """Plain SGD, matching the TF1 ``GradientDescentOptimizer(1e-4)``."""
+    model.compile(
+        optimizer=keras.optimizers.SGD(learning_rate=learning_rate),
+        loss="categorical_crossentropy",
+        metrics=["accuracy"],
+    )
+    return model
 
 
-def create_network(training):
-    # Wrap the neural network in the scope named 'network'.
-    # Create new variables during training, and re-use during testing.
-    with tf.variable_scope('network', reuse=not training):
-        # Create TensorFlow graph for pre-processing. During training the
-        # images are randomly distorted, during evaluation they are only
-        # cropped around the centre - otherwise the accuracy would be
-        # measured on randomly distorted images and would not be
-        # reproducible from one run to the next.
-        images = tools.pre_process(images=x, training=training,
-                                   img_size_cropped=img_size_cropped,
-                                   num_channels=num_channels)
+def build_callbacks(save_dir: Path | str) -> list[keras.callbacks.Callback]:
+    """Checkpointing and TensorBoard logging.
 
-        # Create TensorFlow graph for the main processing.
-        y_pred, loss = main_network(images=images, training=training)
+    Replaces the hand-rolled ``tf.train.Saver`` / ``latest_checkpoint`` dance,
+    including the ``try/except tf.errors.OpError`` around the restore.
+    """
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
 
-    return y_pred, loss
+    return [
+        keras.callbacks.ModelCheckpoint(
+            filepath=str(save_dir / "model.keras"),
+            save_best_only=True,
+            monitor="val_accuracy",
+            mode="max",
+        ),
+        keras.callbacks.TensorBoard(log_dir=str(save_dir)),
+    ]
 
 
-global_step = tf.Variable(initial_value=0,
-                          name='global_step', trainable=False)
+def restore_if_available(model: keras.Model, save_dir: Path | str) -> keras.Model:
+    """Load the last checkpoint if there is a usable one, else keep the fresh weights."""
+    checkpoint = Path(save_dir) / "model.keras"
 
-# Two copies of the graph sharing the same variables: the first one is
-# built for training and provides the loss we optimize, the second one is
-# built for inference and provides the predictions we measure.
-_, loss = create_network(training=True)
-y_pred, _ = create_network(training=False)
+    if not checkpoint.exists():
+        print("No checkpoint found. Using freshly initialized weights.")
+        return model
 
-optimizer = tf.train.GradientDescentOptimizer(learning_rate=1e-4).minimize(loss, global_step=global_step)
-
-y_pred_cls = tf.argmax(y_pred, dimension=1)
-
-correct_prediction = tf.equal(y_pred_cls, y_true_cls)
-accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-
-saver = tf.train.Saver()
-
-session = tf.Session()
-
-save_dir = 'logs/'
-
-if not os.path.exists(save_dir):
-    os.makedirs(save_dir)
-
-save_path = os.path.join(save_dir, 'model.ckpt')
-
-# Use TensorFlow to find the latest checkpoint - if any.
-last_chk_path = tf.train.latest_checkpoint(checkpoint_dir=save_dir)
-
-if last_chk_path is None:
-    print("No checkpoint found. Initializing variables instead.")
-    session.run(tf.global_variables_initializer())
-else:
     try:
         print("Trying to restore last checkpoint ...")
-
-        # Try and load the data in the checkpoint.
-        saver.restore(session, save_path=last_chk_path)
-
-        # If we get to this point, the checkpoint was successfully loaded.
-        print("Restored checkpoint from:", last_chk_path)
-    except (tf.errors.OpError, ValueError) as e:
-        # Only catch the errors that mean the checkpoint is unusable, so
-        # that a Ctrl-C or a genuine bug is not silently swallowed here.
-        print("Failed to restore checkpoint:", e)
-        print("Initializing variables instead.")
-        session.run(tf.global_variables_initializer())
+        restored = keras.models.load_model(checkpoint)
+        print("Restored checkpoint from:", checkpoint)
+        return restored
+    except (OSError, ValueError) as error:
+        # Only catch what means "this checkpoint is unusable", so that a real
+        # bug is not silently swallowed here.
+        print("Failed to restore checkpoint:", error)
+        print("Using freshly initialized weights.")
+        return model
 
 
-def random_batch(dataset, train_batch_size=64):
-    # Number of images in the training-set.
-    train_images = dataset['train_images']
-    train_labels = dataset['train_labels']
-    num_images = len(train_images)
+def train(
+    model: keras.Model,
+    dataset: dict,
+    epochs: int = 20,
+    batch_size: int = DEFAULT_BATCH_SIZE,
+    callbacks: Sequence[keras.callbacks.Callback] | None = None,
+    verbose: str | int = "auto",
+) -> keras.callbacks.History:
+    """Fit on the training split, monitoring the validation split.
 
-    # Create a random index.
-    idx = np.random.choice(num_images,
-                           size=train_batch_size,
-                           replace=False)
-
-    # Use the random index to select random images and labels.
-    x_batch = train_images[idx, :, :, :]
-    y_batch = train_labels[idx, :]
-
-    return x_batch, y_batch
-
-
-def optimize(num_iterations):
-    # Start-time used for printing time-usage below.
-    start_time = time.time()
-
-    for i in range(num_iterations):
-        # Get a batch of training examples.
-        # x_batch now holds a batch of images and
-        # y_true_batch are the true labels for those images.
-        x_batch, y_true_batch = random_batch(dataset)
-
-        # Put the batch into a dict with the proper names
-        # for placeholder variables in the TensorFlow graph.
-        feed_dict_train = {x: x_batch,
-                           y_true: y_true_batch}
-
-        # Run the optimizer using this batch of training data.
-        # TensorFlow assigns the variables in feed_dict_train
-        # to the placeholder variables and then runs the optimizer.
-        # We also want to retrieve the global_step counter.
-        i_global, _ = session.run([global_step, optimizer],
-                                  feed_dict=feed_dict_train)
-
-        # Print status to screen every 100 iterations (and last).
-        if (i_global % 10 == 0) or (i == num_iterations - 1):
-            # Calculate the accuracy on the training-batch.
-            batch_acc = session.run(accuracy,
-                                    feed_dict=feed_dict_train)
-
-            # Print status.
-            msg = "Global Step: {0:>6}, Training Batch Accuracy: {1:>6.1%}"
-            print(msg.format(i_global, batch_acc))
-
-        # Save a checkpoint to disk every 1000 iterations (and last).
-        if (i_global % 1000 == 0) or (i == num_iterations - 1):
-            # Save all variables of the TensorFlow graph to a
-            # checkpoint. Append the global_step counter
-            # to the filename so we save the last several checkpoints.
-            saver.save(session,
-                       save_path=save_path,
-                       global_step=global_step)
-
-            print("Saved checkpoint.")
-            print_valid_accuracy(dataset)
-
-    # Ending time.
-    end_time = time.time()
-
-    # Difference between start and end-times.
-    time_dif = end_time - start_time
-
-    # Print the time-usage.
-    print("Time usage: " + str(timedelta(seconds=int(round(time_dif)))))
+    The test-set stays untouched until the final measurement; picking a
+    snapshot based on it would leak it into model selection.
+    """
+    return model.fit(
+        dataset["train_images"],
+        dataset["train_labels"],
+        validation_data=(dataset["valid_images"], dataset["valid_labels"]),
+        epochs=epochs,
+        batch_size=batch_size,
+        shuffle=True,
+        callbacks=list(callbacks) if callbacks is not None else None,
+        verbose=verbose,
+    )
 
 
-# Split the data-set in batches of this size to limit RAM usage.
-batch_size = 256
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Train a CNN on the CIFAR-100 subset.")
+    parser.add_argument("--model", choices=sorted(MODEL_BUILDERS), default="dual-path")
+    parser.add_argument("--epochs", type=int, default=20)
+    parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
+    parser.add_argument("--learning-rate", type=float, default=DEFAULT_LEARNING_RATE)
+    parser.add_argument("--dataset-path", type=Path, default=DEFAULT_DATASET_PATH)
+    parser.add_argument("--save-dir", type=Path, default=Path("logs"))
+    parser.add_argument("--resume", action="store_true", help="restore the last checkpoint first")
+    parser.add_argument("--show-example-errors", action="store_true")
+    parser.add_argument("--show-confusion-matrix", action="store_true")
+    return parser.parse_args(argv)
 
 
-def predict_cls(images, labels, cls_true):
-    # Number of images.
-    num_images = len(images)
+def main(argv: Sequence[str] | None = None) -> int:
+    args = parse_args(argv)
 
-    # Allocate an array for the predicted classes which
-    # will be calculated in batches and filled into this array.
-    cls_pred = np.zeros(shape=num_images, dtype=np.int)
+    np.set_printoptions(precision=3, suppress=True)
 
-    # Now calculate the predicted classes for the batches.
-    # We will just iterate through all the batches.
-    # There might be a more clever and Pythonic way of doing this.
+    dataset = load_dataset(args.dataset_path)
 
-    # The starting index for the next batch is denoted i.
-    i = 0
+    input_shape = dataset["train_images"].shape[1:]
+    num_classes = dataset["train_labels"].shape[1]
 
-    while i < num_images:
-        # The ending index for the next batch is denoted j.
-        j = min(i + batch_size, num_images)
+    model = build_model(args.model, input_shape=input_shape, num_classes=num_classes)
+    if args.resume:
+        model = restore_if_available(model, args.save_dir)
+    compile_model(model, learning_rate=args.learning_rate)
+    model.summary()
 
-        # Create a feed-dict with the images and labels
-        # between index i and j.
-        feed_dict = {x: images[i:j, :],
-                     y_true: labels[i:j, :]}
+    train(
+        model,
+        dataset,
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        callbacks=build_callbacks(args.save_dir),
+    )
 
-        # Calculate the predicted class using TensorFlow.
-        cls_pred[i:j] = session.run(y_pred_cls, feed_dict=feed_dict)
+    print_valid_accuracy(model, dataset)
+    print_test_accuracy(
+        model,
+        dataset,
+        show_example_errors=args.show_example_errors,
+        show_confusion_matrix=args.show_confusion_matrix,
+    )
 
-        # Set the start-index for the next batch to the
-        # end-index of the current batch.
-        i = j
-
-    # Create a boolean array whether each image is correctly classified.
-    correct = (cls_true == cls_pred)
-
-    return correct, cls_pred
+    return 0
 
 
-def classification_accuracy(correct):
-    # When averaging a boolean array, False means 0 and True means 1.
-    # So we are calculating: number of True / len(correct) which is
-    # the same as the classification accuracy.
-
-    # Return the classification accuracy
-    # and the number of correct classifications.
-    return correct.mean(), correct.sum()
-
-
-def print_valid_accuracy(dataset):
-    correct, cls_pred = predict_cls(images=dataset['valid_images'],
-                                    labels=dataset['valid_labels'],
-                                    cls_true=dataset['valid_cls'])
-
-    # Classification accuracy and the number of correct classifications.
-    acc, num_correct = classification_accuracy(correct)
-
-    # Number of images being classified.
-    num_images = len(correct)
-
-    # Print the accuracy.
-    msg = "Accuracy on Validation-Set: {0:.1%} ({1} / {2})"
-    print(msg.format(acc, num_correct, num_images))
-
-
-def print_test_accuracy(dataset,
-                        show_example_errors=False,
-                        show_confusion_matrix=False):
-
-    # For all the images in the test-set,
-    # calculate the predicted classes and whether they are correct.
-    correct, cls_pred = predict_cls(images=dataset['test_images'],
-                                    labels=dataset['test_labels'],
-                                    cls_true=dataset['test_cls'])
-
-    # Classification accuracy and the number of correct classifications.
-    acc, num_correct = classification_accuracy(correct)
-
-    # Number of images being classified.
-    num_images = len(correct)
-
-    # Print the accuracy.
-    msg = "Accuracy on Test-Set: {0:.1%} ({1} / {2})"
-    print(msg.format(acc, num_correct, num_images))
-
-    # Plot some examples of mis-classifications, if desired.
-    if show_example_errors:
-        print("Example errors:")
-        plot.plot_example_errors(cls_pred=cls_pred,
-                                 correct=correct,
-                                 dataset=dataset)
-
-    # Plot the confusion matrix, if desired.
-    if show_confusion_matrix:
-        print("Confusion Matrix:")
-        plot.plot_confusion_matrix(cls_pred=cls_pred, dataset=dataset)
-
-
-# TODO(bufnal): optimize function
-optimize(num_iterations=50)
-
-print_test_accuracy(dataset,
-                    show_example_errors=True,
-                    show_confusion_matrix=True)
-
-
-# Set the rounding options for numpy.
-np.set_printoptions(precision=3, suppress=True)
-
-# This has been commented out in case you want to modify and experiment
-# with the Notebook without having to restart it.
-log_dir = 'logs'
-log_dir_fullpath = os.path.join(os.getcwd(), log_dir)
-file_writer = tf.summary.FileWriter(log_dir_fullpath, session.graph)
-session.close()
+if __name__ == "__main__":
+    raise SystemExit(main())
