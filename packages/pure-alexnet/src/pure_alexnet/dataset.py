@@ -9,7 +9,6 @@ loader that returns a handful of random images.
 
 from __future__ import annotations
 
-import pickle
 import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -18,6 +17,7 @@ from pathlib import Path
 import numpy as np
 
 from pure_alexnet import oxflower17
+from vision_core.cache import read_pickle, write_pickle
 
 DEFAULT_DATASET_PATH = Path("17flowers/dataset.pickle")
 
@@ -114,15 +114,6 @@ def split_dataset(
     }
 
 
-def ensure_directories(*paths: Path | str) -> None:
-    """Create the given directories if they do not exist yet."""
-    for path in paths:
-        path = Path(path)
-        if not path.is_dir():
-            print(f"Creating {path} directory...")
-            path.mkdir(parents=True, exist_ok=True)
-
-
 class DataSet:
     """The 17-flowers data-set, cached on disk as a single pickle.
 
@@ -175,13 +166,10 @@ class DataSet:
         return dataset
 
     def read_pickle(self) -> dict[str, np.ndarray]:
-        with self.dataset_path.open("rb") as fp:
-            return pickle.load(fp)
+        return read_pickle(self.dataset_path)
 
     def write_pickle(self, dataset: dict[str, np.ndarray]) -> None:
-        self.dataset_path.parent.mkdir(parents=True, exist_ok=True)
-        with self.dataset_path.open("wb") as fp:
-            pickle.dump(dataset, fp, pickle.HIGHEST_PROTOCOL)
+        write_pickle(dataset, self.dataset_path)
 
     def cleanup(self) -> None:
         """Delete the raw archive and extracted images once the pickle exists."""

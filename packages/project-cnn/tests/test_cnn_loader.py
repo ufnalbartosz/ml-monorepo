@@ -9,7 +9,6 @@ a fixture pickled the same way.
 from __future__ import annotations
 
 import pickle
-import tarfile
 
 import numpy as np
 import pytest
@@ -20,7 +19,6 @@ from project_cnn.loader import (
     convert_images,
     convert_labels,
     decode_bytes,
-    download_and_extract,
     load_class_names,
     load_data,
     subset_mask,
@@ -183,35 +181,22 @@ class TestLoadData:
         assert load_class_names(config) == cifar_class_names
 
 
-class TestDownloadAndExtract:
-    def test_skips_the_download_when_the_archive_is_present(self, tmp_path):
-        archive = tmp_path / "cifar-100-python.tar.gz"
-        archive.write_bytes(b"already here")
+class TestMaybeDownloadAndExtract:
+    def test_passes_the_configured_url_and_directory_through(self, tmp_path, monkeypatch):
+        """Downloading itself is vision-core's job; this checks the wiring."""
+        seen = {}
 
-        result = download_and_extract(loader.DATA_URL, tmp_path)
+        def fake(url, download_dir):
+            seen.update(url=url, download_dir=download_dir)
+            return tmp_path / "archive.tar.gz"
 
-        assert result == archive
-        assert archive.read_bytes() == b"already here"
+        monkeypatch.setattr(loader, "download_and_extract", fake)
+        config = Cifar100Config(data_path=tmp_path)
 
-    def test_extracts_a_tarball_it_just_fetched(self, tmp_path, monkeypatch):
-        payload = tmp_path / "payload"
-        payload.mkdir()
-        (payload / "marker.txt").write_text("hello")
-        source = tmp_path / "source.tar.gz"
-        with tarfile.open(source, "w:gz") as tar:
-            tar.add(payload, arcname="cifar-100-python")
+        loader.maybe_download_and_extract(config)
 
-        download_dir = tmp_path / "download"
-
-        def fake_urlretrieve(url, filename, reporthook=None):
-            filename.write_bytes(source.read_bytes())
-            return filename, None
-
-        monkeypatch.setattr(loader.urllib.request, "urlretrieve", fake_urlretrieve)
-
-        download_and_extract("https://example.invalid/cifar-100-python.tar.gz", download_dir)
-
-        assert (download_dir / "cifar-100-python" / "marker.txt").read_text() == "hello"
+        assert seen["url"] == loader.DATA_URL
+        assert seen["download_dir"] == tmp_path
 
 
 class TestConfig:

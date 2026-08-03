@@ -16,17 +16,14 @@ tested against a handful of synthetic rows.
 from __future__ import annotations
 
 import pickle
-import sys
-import tarfile
-import urllib.request
-import zipfile
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
 
-from project_cnn.dataset import one_hot_encoded
+from vision_core.archives import download_and_extract
+from vision_core.labels import one_hot_encoded
 
 DATA_URL = "https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz"
 DEFAULT_DATA_PATH = Path("data/CIFAR-100/")
@@ -179,46 +176,6 @@ def load_class_names(config: Cifar100Config = DEFAULT_CONFIG) -> list[str]:
     return meta["fine_label_names"]
 
 
-def print_download_progress(count: int, block_size: int, total_size: int) -> None:
-    pct_complete = float(count * block_size) / total_size
-
-    # The \r means the line overwrites itself.
-    sys.stdout.write(f"\r- Download progress: {pct_complete:.1%}")
-    sys.stdout.flush()
-
-
-def download_and_extract(url: str, download_dir: Path | str) -> Path:
-    """Download ``url`` into ``download_dir`` and unpack it, unless already there."""
-    download_dir = Path(download_dir)
-    file_path = download_dir / url.rsplit("/", 1)[-1]
-
-    if file_path.exists():
-        print("Data has apparently already been downloaded and unpacked.")
-        return file_path
-
-    download_dir.mkdir(parents=True, exist_ok=True)
-
-    urllib.request.urlretrieve(  # noqa: S310 - fixed https URL
-        url=url,
-        filename=file_path,
-        reporthook=print_download_progress,
-    )
-
-    print()
-    print("Download finished. Extracting files.")
-
-    name = str(file_path)
-    if name.endswith(".zip"):
-        with zipfile.ZipFile(file_path, mode="r") as archive:
-            archive.extractall(download_dir)
-    elif name.endswith((".tar.gz", ".tgz")):
-        with tarfile.open(file_path, mode="r:gz") as archive:
-            archive.extractall(download_dir, filter="data")
-
-    print("Done.")
-
-    return file_path
-
-
 def maybe_download_and_extract(config: Cifar100Config = DEFAULT_CONFIG) -> Path:
+    """Fetch and unpack the CIFAR-100 archive unless it is already on disk."""
     return download_and_extract(url=config.data_url, download_dir=config.data_path)

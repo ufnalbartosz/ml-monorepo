@@ -1,5 +1,9 @@
 """Tests for the data-set loader that replaced ``tflearn.datasets.oxflower17``.
 
+Only what is specific to this data-set is here: the class names, and the rule
+that an image's position in the sorted file listing implies its label.  Generic
+downloading, extraction and JPEG decoding are tested in vision-core.
+
 The download is injected, and the archive fixture is built on the fly, so
 nothing here reaches the network.
 """
@@ -40,65 +44,6 @@ class TestClassNumbers:
     def test_rejects_a_non_positive_block_size(self):
         with pytest.raises(ValueError, match="images_per_class"):
             oxflower17.class_numbers(10, images_per_class=0)
-
-
-class TestOneHotEncoded:
-    def test_encodes_to_a_single_one_per_row(self):
-        encoded = oxflower17.one_hot_encoded([0, 2, 1], num_classes=3)
-
-        np.testing.assert_array_equal(
-            encoded,
-            np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]], dtype=np.float32),
-        )
-
-    def test_matches_the_class_numbers_it_came_from(self):
-        numbers = oxflower17.class_numbers(1360)
-
-        encoded = oxflower17.one_hot_encoded(numbers, oxflower17.NUM_CLASSES)
-
-        assert encoded.shape == (1360, 17)
-        np.testing.assert_array_equal(np.argmax(encoded, axis=1), numbers)
-
-
-class TestImagePaths:
-    def test_returns_jpegs_sorted_by_name(self, tmp_path):
-        for name in ("image_0003.jpg", "image_0001.jpg", "image_0002.jpg"):
-            write_jpeg(tmp_path / name)
-
-        paths = oxflower17.image_paths(tmp_path)
-
-        assert [p.name for p in paths] == ["image_0001.jpg", "image_0002.jpg", "image_0003.jpg"]
-
-    def test_ignores_non_jpeg_files(self, tmp_path):
-        write_jpeg(tmp_path / "image_0001.jpg")
-        (tmp_path / "files.txt").write_text("not an image")
-
-        assert [p.name for p in oxflower17.image_paths(tmp_path)] == ["image_0001.jpg"]
-
-
-class TestLoadImages:
-    def test_decodes_to_float_in_the_unit_range(self, tmp_path):
-        path = write_jpeg(tmp_path / "image_0001.jpg", size=(8, 8), colour=(255, 0, 0))
-
-        image = oxflower17.load_image(path, image_size=(4, 4))
-
-        assert image.shape == (4, 4, 3)
-        assert image.dtype == np.float32
-        assert 0.0 <= image.min() and image.max() <= 1.0
-        assert image[0, 0, 0] > 0.9, "a pure red pixel should stay red"
-
-    def test_resizes_every_image_to_the_requested_shape(self, tmp_path):
-        paths = [
-            write_jpeg(tmp_path / "image_0001.jpg", size=(8, 12)),
-            write_jpeg(tmp_path / "image_0002.jpg", size=(20, 5)),
-        ]
-
-        images = oxflower17.load_images(paths, image_size=(6, 6))
-
-        assert images.shape == (2, 6, 6, 3)
-
-    def test_empty_input_yields_an_empty_batch(self):
-        assert oxflower17.load_images([], image_size=(4, 4)).shape == (0, 4, 4, 3)
 
 
 class TestLoadData:
@@ -179,7 +124,7 @@ class TestExtract:
             tar.add(staging, arcname="other")
 
         with pytest.raises(FileNotFoundError, match="No 'jpg' directory"):
-            oxflower17.extract(archive_path, tmp_path / "out")
+            oxflower17.extract_archive(archive_path, tmp_path / "out")
 
 
 def test_class_names_line_up_with_the_class_count():
@@ -187,11 +132,11 @@ def test_class_names_line_up_with_the_class_count():
     assert len(set(oxflower17.CLASS_NAMES)) == oxflower17.NUM_CLASSES
 
 
-def test_download_skips_an_archive_that_is_already_on_disk(tmp_path):
+def test_download_archive_targets_the_vgg_url(tmp_path):
     existing = tmp_path / "17flowers.tgz"
     existing.write_bytes(b"already here")
 
-    result = oxflower17.download(url=oxflower17.DATA_URL, download_dir=tmp_path)
+    result = oxflower17.download_archive(download_dir=tmp_path)
 
-    assert result == existing
+    assert result == existing, "the archive name must match the configured URL"
     assert existing.read_bytes() == b"already here"

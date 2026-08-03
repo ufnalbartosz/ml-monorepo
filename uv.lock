@@ -20,6 +20,7 @@ members = [
     "nadaraya-watson",
     "project-cnn",
     "pure-alexnet",
+    "vision-core",
 ]
 
 [[package]]
@@ -692,6 +693,7 @@ dependencies = [
     { name = "nadaraya-watson" },
     { name = "project-cnn" },
     { name = "pure-alexnet" },
+    { name = "vision-core" },
 ]
 
 [package.dev-dependencies]
@@ -706,6 +708,7 @@ requires-dist = [
     { name = "nadaraya-watson", editable = "packages/nadaraya-watson" },
     { name = "project-cnn", editable = "packages/project-cnn" },
     { name = "pure-alexnet", editable = "packages/pure-alexnet" },
+    { name = "vision-core", editable = "packages/vision-core" },
 ]
 
 [package.metadata.requires-dev]
@@ -1039,6 +1042,7 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "tensorboard" },
     { name = "tensorflow" },
+    { name = "vision-core" },
 ]
 
 [package.metadata]
@@ -1049,6 +1053,7 @@ requires-dist = [
     { name = "scikit-learn", specifier = ">=1.5" },
     { name = "tensorboard", specifier = ">=2.16" },
     { name = "tensorflow", specifier = ">=2.16" },
+    { name = "vision-core", editable = "packages/vision-core" },
 ]
 
 [[package]]
@@ -1076,6 +1081,7 @@ dependencies = [
     { name = "pillow" },
     { name = "tensorboard" },
     { name = "tensorflow" },
+    { name = "vision-core" },
 ]
 
 [package.metadata]
@@ -1085,6 +1091,7 @@ requires-dist = [
     { name = "pillow", specifier = ">=11.0" },
     { name = "tensorboard", specifier = ">=2.16" },
     { name = "tensorflow", specifier = ">=2.16" },
+    { name = "vision-core", editable = "packages/vision-core" },
 ]
 
 [[package]]
@@ -1499,6 +1506,27 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/53/0c/06f8b233b8fd13b9e5ee11424ef85419ba0d8ba0b3138bf360be2ff56953/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c", size = 433602, upload-time = "2026-05-07T16:13:18.596Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
+]
+
+[[package]]
+name = "vision-core"
+version = "0.1.0"
+source = { editable = "packages/vision-core" }
+dependencies = [
+    { name = "keras" },
+    { name = "numpy" },
+    { name = "pillow" },
+    { name = "tensorboard" },
+    { name = "tensorflow" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "keras", specifier = ">=3.5" },
+    { name = "numpy", specifier = ">=2.5.1" },
+    { name = "pillow", specifier = ">=11.0" },
+    { name = "tensorboard", specifier = ">=2.16" },
+    { name = "tensorflow", specifier = ">=2.16" },
 ]
 
 [[package]]

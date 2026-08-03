@@ -12,6 +12,7 @@ known-first-party = [
     "nadaraya_watson",
     "project_cnn",
     "pure_alexnet",
+    "vision_core",
 ]
 
 [lint.per-file-ignores]

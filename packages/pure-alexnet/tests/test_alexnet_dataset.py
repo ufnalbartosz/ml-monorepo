@@ -15,7 +15,6 @@ from pure_alexnet.dataset import (
     LABELS,
     SPLIT_KEYS,
     DataSet,
-    ensure_directories,
     split_dataset,
     train_test_valid_split,
 )
@@ -200,12 +199,3 @@ class TestDataSet:
 def test_labels_cover_every_class():
     assert len(LABELS) == 17
     assert len(set(LABELS)) == 17
-
-
-def test_ensure_directories_is_idempotent(tmp_path):
-    target = tmp_path / "logs"
-
-    ensure_directories(target)
-    ensure_directories(target)
-
-    assert target.is_dir()

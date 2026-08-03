@@ -2,8 +2,11 @@
 
 This is the half of the old ``model.py`` that had side effects.  Keeping it in
 its own module means importing the architecture no longer downloads 60 MB of
-JPEGs and starts a 150-epoch run.  Every function here takes what it needs as
-an argument, so a test can drive the whole pipeline with four random images.
+JPEGs and starts a 150-epoch run.
+
+The loop itself, the callbacks and the accuracy calculation are shared with
+`project-cnn` and live in :mod:`vision_core`; what stays here is the wiring
+specific to this experiment.
 
 Run it with::
 
@@ -19,63 +22,27 @@ from pathlib import Path
 import keras
 import numpy as np
 
-from pure_alexnet.dataset import DEFAULT_DATASET_PATH, DataSet, ensure_directories
+from pure_alexnet.dataset import DEFAULT_DATASET_PATH, DataSet
 from pure_alexnet.model import build_and_compile
+from vision_core.cache import ensure_directories
+from vision_core.metrics import accuracy_from_probabilities
+from vision_core.training import build_callbacks, train
 
 DEFAULT_MODEL_NAME = "3_3"
 
+__all__ = [
+    "DEFAULT_MODEL_NAME",
+    "accuracy",
+    "build_callbacks",
+    "evaluate",
+    "main",
+    "parse_args",
+    "train",
+]
 
-def build_callbacks(
-    checkpoint_dir: Path | str,
-    log_dir: Path | str,
-    model_name: str = DEFAULT_MODEL_NAME,
-) -> list[keras.callbacks.Callback]:
-    """Checkpointing + TensorBoard, the tflearn ``DNN`` defaults in Keras form."""
-    checkpoint_dir = Path(checkpoint_dir)
-    log_dir = Path(log_dir)
-    ensure_directories(checkpoint_dir, log_dir)
-
-    return [
-        keras.callbacks.ModelCheckpoint(
-            filepath=str(checkpoint_dir / f"{model_name}.keras"),
-            save_best_only=True,
-            monitor="val_accuracy",
-            mode="max",
-        ),
-        keras.callbacks.TensorBoard(log_dir=str(log_dir)),
-    ]
-
-
-def train(
-    model: keras.Model,
-    data: dict[str, np.ndarray],
-    epochs: int = 150,
-    batch_size: int = 64,
-    callbacks: Sequence[keras.callbacks.Callback] | None = None,
-    verbose: str | int = "auto",
-) -> keras.callbacks.History:
-    """Fit ``model`` on the training split, monitoring the validation split."""
-    return model.fit(
-        data["train_images"],
-        data["train_labels"],
-        validation_data=(data["valid_images"], data["valid_labels"]),
-        epochs=epochs,
-        batch_size=batch_size,
-        shuffle=True,
-        callbacks=list(callbacks) if callbacks is not None else None,
-        verbose=verbose,
-    )
-
-
-def accuracy(predictions: np.ndarray, one_hot_labels: np.ndarray) -> float:
-    """Fraction of rows whose argmax agrees, on probabilities vs one-hot labels."""
-    if len(predictions) == 0:
-        raise ValueError("cannot compute accuracy over zero predictions")
-
-    predicted = np.argmax(predictions, axis=1)
-    expected = np.argmax(one_hot_labels, axis=1)
-
-    return float(np.mean(predicted == expected))
+#: Kept as a module-level name so callers and tests do not have to know that
+#: the implementation moved to vision_core.
+accuracy = accuracy_from_probabilities
 
 
 def evaluate(model: keras.Model, data: dict[str, np.ndarray], batch_size: int = 64) -> float:

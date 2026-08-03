@@ -8,13 +8,13 @@ tests run against ``tmp_path``.
 
 from __future__ import annotations
 
-import pickle
 from pathlib import Path
 
 import numpy as np
 
 from project_cnn import loader
 from project_cnn.loader import DEFAULT_CONFIG, Cifar100Config
+from vision_core.cache import read_pickle, write_pickle
 
 DEFAULT_DATASET_PATH = Path("data/dataset.pickle")
 
@@ -43,27 +43,6 @@ def load_dataset(
         return read_pickle(dataset_path)
 
     return create_dataset(dataset_path, config)
-
-
-def read_pickle(dataset_path: Path | str) -> dict:
-    dataset_path = Path(dataset_path)
-
-    if not dataset_path.exists():
-        raise FileNotFoundError(f"File '{dataset_path}' does not exist.")
-
-    print("Data has been already downloaded and unpacked.")
-    with dataset_path.open("rb") as fp:
-        return pickle.load(fp)
-
-
-def write_pickle(dataset: dict, dataset_path: Path | str) -> Path:
-    dataset_path = Path(dataset_path)
-    dataset_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with dataset_path.open("wb") as fp:
-        pickle.dump(dataset, fp, protocol=pickle.HIGHEST_PROTOCOL)
-
-    return dataset_path
 
 
 def create_dataset(

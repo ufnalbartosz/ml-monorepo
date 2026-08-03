@@ -6,19 +6,21 @@ package depended on tflearn.  The archive published by VGG contains a flat
 class: the first 80 files are the first category, the next 80 the second, and
 so on.  That ordering is the only label information the archive carries.
 
-Everything that touches the network or the filesystem is a separate, injectable
-function so the label/decoding logic can be tested without downloading 60 MB.
+Downloading, unpacking and JPEG decoding are generic and live in
+:mod:`vision_core`; what is specific to this data-set - the class names and the
+position-implies-label rule - is here.
 """
 
 from __future__ import annotations
 
-import tarfile
-import urllib.request
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+
+from vision_core.archives import download, extract
+from vision_core.images import image_paths, load_images
+from vision_core.labels import one_hot_encoded
 
 DATA_URL = "https://www.robots.ox.ac.uk/~vgg/data/flowers/17/17flowers.tgz"
 
@@ -59,63 +61,16 @@ def class_numbers(num_images: int, images_per_class: int = IMAGES_PER_CLASS) -> 
     return np.arange(num_images, dtype=np.int64) // images_per_class
 
 
-def one_hot_encoded(class_numbers_: Sequence[int] | np.ndarray, num_classes: int) -> np.ndarray:
-    """One-hot encode integer class-numbers into a ``[n, num_classes]`` array."""
-    return np.eye(num_classes, dtype=np.float32)[np.asarray(class_numbers_)]
+def download_archive(download_dir: Path | str = "17flowers", url: str = DATA_URL) -> Path:
+    """Fetch the VGG tarball into ``download_dir``."""
+    return download(url, download_dir)
 
 
-def image_paths(jpg_dir: Path | str) -> list[Path]:
-    """Return the JPEG paths in ``jpg_dir``, sorted by filename.
+def extract_archive(archive_path: Path | str, dest_dir: Path | str) -> Path:
+    """Unpack the tarball and return the directory holding the JPEG files."""
+    extract(archive_path, dest_dir)
 
-    Sorting matters: the filename order *is* the label order.
-    """
-    jpg_dir = Path(jpg_dir)
-    return sorted(p for p in jpg_dir.iterdir() if p.suffix.lower() in (".jpg", ".jpeg"))
-
-
-def load_image(path: Path | str, image_size: tuple[int, int]) -> np.ndarray:
-    """Decode one image to ``float32`` in ``[0, 1]`` with shape ``(*image_size, 3)``."""
-    with Image.open(path) as img:
-        img = img.convert("RGB").resize(image_size[::-1], Image.BILINEAR)
-        return np.asarray(img, dtype=np.float32) / 255.0
-
-
-def load_images(paths: Sequence[Path | str], image_size: tuple[int, int]) -> np.ndarray:
-    """Decode a sequence of images into a ``[n, height, width, 3]`` array."""
-    if not paths:
-        return np.zeros((0, *image_size, 3), dtype=np.float32)
-
-    return np.stack([load_image(path, image_size) for path in paths])
-
-
-def download(url: str = DATA_URL, download_dir: Path | str = "17flowers") -> Path:
-    """Download ``url`` into ``download_dir`` unless the file is already there."""
-    download_dir = Path(download_dir)
-    download_dir.mkdir(parents=True, exist_ok=True)
-
-    archive_path = download_dir / url.rsplit("/", 1)[-1]
-    if archive_path.exists():
-        print(f"Archive already downloaded: {archive_path}")
-        return archive_path
-
-    print(f"Downloading {url} ...")
-    urllib.request.urlretrieve(url, archive_path)  # noqa: S310 - fixed https URL
-    print(f"Saved to {archive_path}")
-
-    return archive_path
-
-
-def extract(archive_path: Path | str, dest_dir: Path | str) -> Path:
-    """Extract the tarball and return the directory holding the JPEG files."""
-    archive_path = Path(archive_path)
-    dest_dir = Path(dest_dir)
-    dest_dir.mkdir(parents=True, exist_ok=True)
-
-    with tarfile.open(archive_path, mode="r:gz") as tar:
-        # filter='data' refuses absolute paths and symlinks escaping dest_dir.
-        tar.extractall(dest_dir, filter="data")
-
-    jpg_dir = dest_dir / "jpg"
+    jpg_dir = Path(dest_dir) / "jpg"
     if not jpg_dir.is_dir():
         raise FileNotFoundError(f"No 'jpg' directory inside {archive_path}")
 
@@ -126,8 +81,8 @@ def load_data(
     root: Path | str = "17flowers",
     image_size: tuple[int, int] = (227, 227),
     one_hot: bool = True,
-    downloader: Callable[..., Path] = download,
-    extractor: Callable[..., Path] = extract,
+    downloader: Callable[..., Path] = download_archive,
+    extractor: Callable[..., Path] = extract_archive,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Download, extract and decode the data-set.
 
@@ -142,7 +97,7 @@ def load_data(
         archive_path = downloader(download_dir=root)
         jpg_dir = extractor(archive_path, root)
 
-    paths = image_paths(jpg_dir)
+    paths = image_paths(jpg_dir, extensions=(".jpg", ".jpeg"))
     if not paths:
         raise FileNotFoundError(f"No JPEG files found in {jpg_dir}")
 

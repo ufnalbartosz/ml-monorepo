@@ -1,9 +1,12 @@
-"""Batched prediction and accuracy reporting.
+"""Accuracy reporting for the CIFAR-100 subset splits.
 
 These functions used to sit in ``main.py`` and read the module-level ``x``,
 ``y_true``, ``y_pred_cls`` and ``session`` globals, so they could only be
-called from inside that one script.  They now take a ``keras.Model`` and the
-arrays they operate on.
+called from inside that one script.  They now take a ``keras.Model``.
+
+The batched prediction and the arithmetic are shared with `pure-alexnet` and
+live in :mod:`vision_core.metrics`; what stays here is the reporting that knows
+about this package's ``{split}_images`` / ``{split}_cls`` dict layout.
 """
 
 from __future__ import annotations
@@ -12,8 +15,21 @@ import keras
 import numpy as np
 
 from project_cnn import plot
+from vision_core.metrics import (
+    DEFAULT_BATCH_SIZE,
+    classification_accuracy,
+    correct_predictions,
+    predict_classes,
+)
 
-DEFAULT_BATCH_SIZE = 256
+__all__ = [
+    "DEFAULT_BATCH_SIZE",
+    "classification_accuracy",
+    "evaluate_split",
+    "predict_cls",
+    "print_test_accuracy",
+    "print_valid_accuracy",
+]
 
 
 def predict_cls(
@@ -22,7 +38,7 @@ def predict_cls(
     cls_true: np.ndarray,
     batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Predict classes in batches to limit RAM usage.
+    """Predict classes in batches.
 
     Returns ``(correct, cls_pred)``: a boolean array of whether each image was
     classified correctly, and the predicted class-numbers.
@@ -30,28 +46,9 @@ def predict_cls(
     if len(images) != len(cls_true):
         raise ValueError(f"images and labels disagree on length: {len(images)} vs {len(cls_true)}")
 
-    cls_pred = np.zeros(shape=len(images), dtype=np.int64)
+    cls_pred = predict_classes(model, images, batch_size=batch_size)
 
-    for start in range(0, len(images), batch_size):
-        end = min(start + batch_size, len(images))
-        predictions = model.predict(images[start:end], verbose=0)
-        cls_pred[start:end] = np.argmax(predictions, axis=1)
-
-    return cls_true == cls_pred, cls_pred
-
-
-def classification_accuracy(correct: np.ndarray) -> tuple[float, int]:
-    """Accuracy and the number of correct classifications.
-
-    Averaging a boolean array counts False as 0 and True as 1, so the mean is
-    the classification accuracy.
-    """
-    correct = np.asarray(correct)
-
-    if correct.size == 0:
-        raise ValueError("cannot compute accuracy over an empty array")
-
-    return float(correct.mean()), int(correct.sum())
+    return correct_predictions(cls_pred, cls_true), cls_pred
 
 
 def evaluate_split(

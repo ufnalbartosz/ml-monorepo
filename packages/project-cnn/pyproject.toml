@@ -10,6 +10,7 @@ dependencies = [
     "scikit-learn>=1.5",
     "tensorboard>=2.16",
     "tensorflow>=2.16",
+    "vision-core",
 ]
 
 [build-system]
@@ -18,3 +19,6 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-name = "project_cnn"
+
+[tool.uv.sources]
+vision-core = { workspace = true }

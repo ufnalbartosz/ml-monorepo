@@ -31,6 +31,9 @@ from project_cnn.dual_path import build_dual_path
 from project_cnn.evaluate import print_test_accuracy, print_valid_accuracy
 from project_cnn.inception import build_inception
 from project_cnn.prepare_dataset import DEFAULT_DATASET_PATH, load_dataset
+from vision_core.training import build_callbacks as _build_callbacks
+from vision_core.training import restore_if_available as _restore_if_available
+from vision_core.training import train
 
 #: Model name -> builder. Each builder takes (input_shape, num_classes).
 MODEL_BUILDERS: dict[str, Callable[..., keras.Model]] = {
@@ -41,6 +44,9 @@ MODEL_BUILDERS: dict[str, Callable[..., keras.Model]] = {
 
 DEFAULT_LEARNING_RATE = 1e-4
 DEFAULT_BATCH_SIZE = 64
+
+#: Basename of the checkpoint written under --save-dir.
+CHECKPOINT_NAME = "model"
 
 
 def build_model(
@@ -73,69 +79,13 @@ def compile_model(
 
 
 def build_callbacks(save_dir: Path | str) -> list[keras.callbacks.Callback]:
-    """Checkpointing and TensorBoard logging.
-
-    Replaces the hand-rolled ``tf.train.Saver`` / ``latest_checkpoint`` dance,
-    including the ``try/except tf.errors.OpError`` around the restore.
-    """
-    save_dir = Path(save_dir)
-    save_dir.mkdir(parents=True, exist_ok=True)
-
-    return [
-        keras.callbacks.ModelCheckpoint(
-            filepath=str(save_dir / "model.keras"),
-            save_best_only=True,
-            monitor="val_accuracy",
-            mode="max",
-        ),
-        keras.callbacks.TensorBoard(log_dir=str(save_dir)),
-    ]
+    """Checkpointing and TensorBoard logging, both written under ``save_dir``."""
+    return _build_callbacks(save_dir, model_name=CHECKPOINT_NAME)
 
 
 def restore_if_available(model: keras.Model, save_dir: Path | str) -> keras.Model:
     """Load the last checkpoint if there is a usable one, else keep the fresh weights."""
-    checkpoint = Path(save_dir) / "model.keras"
-
-    if not checkpoint.exists():
-        print("No checkpoint found. Using freshly initialized weights.")
-        return model
-
-    try:
-        print("Trying to restore last checkpoint ...")
-        restored = keras.models.load_model(checkpoint)
-        print("Restored checkpoint from:", checkpoint)
-        return restored
-    except (OSError, ValueError) as error:
-        # Only catch what means "this checkpoint is unusable", so that a real
-        # bug is not silently swallowed here.
-        print("Failed to restore checkpoint:", error)
-        print("Using freshly initialized weights.")
-        return model
-
-
-def train(
-    model: keras.Model,
-    dataset: dict,
-    epochs: int = 20,
-    batch_size: int = DEFAULT_BATCH_SIZE,
-    callbacks: Sequence[keras.callbacks.Callback] | None = None,
-    verbose: str | int = "auto",
-) -> keras.callbacks.History:
-    """Fit on the training split, monitoring the validation split.
-
-    The test-set stays untouched until the final measurement; picking a
-    snapshot based on it would leak it into model selection.
-    """
-    return model.fit(
-        dataset["train_images"],
-        dataset["train_labels"],
-        validation_data=(dataset["valid_images"], dataset["valid_labels"]),
-        epochs=epochs,
-        batch_size=batch_size,
-        shuffle=True,
-        callbacks=list(callbacks) if callbacks is not None else None,
-        verbose=verbose,
-    )
+    return _restore_if_available(model, save_dir, model_name=CHECKPOINT_NAME)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
