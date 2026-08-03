@@ -43,3 +43,10 @@ enough to train inside a test.
 
 `packages/dfp-formula-project/tests/test_gui.py` needs PyQt6's X client
 libraries and fails on a bare headless machine.
+
+## Further reading
+
+[`docs/modern-vision-guide.md`](docs/modern-vision-guide.md) — how the models
+in this repo relate to 2026 computer vision, a four-step path for closing the
+gap using this repo's own data-set, and where classical image processing is
+still the right tool.
