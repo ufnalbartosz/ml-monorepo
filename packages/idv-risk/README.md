@@ -159,6 +159,15 @@ If you point this at real data: store templates rather than images, set a
 retention schedule you can enforce, and measure the subgroup differentials
 above before deployment rather than after a complaint.
 
+## Production design
+
+[`docs/feedback-loop-and-pipeline.md`](docs/feedback-loop-and-pipeline.md) covers
+what has to exist around this package for it to work in production: where labels
+come from and how long they take to ripen, the selection bias that makes
+approved-only retraining calcify around past thresholds, why the feature vector
+must be logged at scoring time rather than recomputed, the promotion gates a
+candidate model has to clear, and the gaps in this package as it stands.
+
 ## Tests
 
 ```bash
