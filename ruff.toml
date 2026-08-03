@@ -5,7 +5,18 @@ target-version = "py312"
 select = ["E", "F", "W", "I"]
 ignore = ["E501"]
 
+[lint.isort]
+# src/ layouts hide the workspace packages from ruff's own detection.
+known-first-party = [
+    "dfp_formula_project",
+    "nadaraya_watson",
+    "project_cnn",
+    "pure_alexnet",
+]
+
 [lint.per-file-ignores]
-"packages/project-cnn/**" = ["F401", "F821", "F841", "E402", "F403", "F405", "I001", "E712"]
-"packages/pure-alexnet/**" = ["F401", "F821", "F841", "E402", "F403", "F405", "I001"]
+# plot.py keeps the upstream tutorial's formatting: the matplotlib backend has
+# to be selected before pyplot is imported (E402), and the `== False` idiom is
+# load-bearing for numpy boolean arrays (E712).
+"packages/project-cnn/src/project_cnn/plot.py" = ["E402", "E712", "I001"]
 "packages/dfp-formula-project/**" = ["E402", "F403", "F405", "I001", "F401", "F841", "E741", "E703"]

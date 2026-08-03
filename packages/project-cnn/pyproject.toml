@@ -1,12 +1,14 @@
 [project]
 name = "project-cnn"
 version = "0.1.0"
-description = "Inception-style CNN for CIFAR-100 classification"
+description = "CNNs for a 20-class subset of CIFAR-100, on Keras 3 / TensorFlow 2"
 requires-python = ">=3.12"
 dependencies = [
+    "keras>=3.5",
     "matplotlib>=3.11.1",
     "numpy>=2.5.1",
     "scikit-learn>=1.5",
+    "tensorboard>=2.16",
     "tensorflow>=2.16",
 ]
 

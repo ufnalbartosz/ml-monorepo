@@ -1,125 +1,120 @@
-from __future__ import division, print_function, absolute_import
-import os
+"""Inception-style CNN for the CIFAR-100 subset, ported from tflearn to Keras 3.
 
-import tflearn
-from tflearn.layers.core import input_data, dropout, fully_connected
-from tflearn.layers.conv import conv_2d, max_pool_2d, avg_pool_2d
-from tflearn.layers.normalization import local_response_normalization
-from tflearn.layers.merge_ops import merge
-from tflearn.layers.estimator import regression
-from tflearn.data_preprocessing import ImagePreprocessing
-from tflearn.data_augmentation import ImageAugmentation
+The tflearn version built the graph, loaded the data-set and launched a
+1000-epoch run at import time.  This module only builds the model; training
+lives in :mod:`project_cnn.main`.
 
-# Data loading and preprocessing
-from project_cnn.loader import num_classes
-from project_cnn.prepare_dataset import maybe_download_and_extract
+The architecture is unchanged: two inception blocks, each with a 1x1 branch, a
+1x1 -> 3x3 branch, a 1x1 -> 5x5 branch and a pool -> 1x1 branch, concatenated on
+the channel axis.  Layer names carry over from the tflearn graph.
+"""
 
-dataset = maybe_download_and_extract()
-X = dataset['train_images']
-Y = dataset['train_labels']
+from __future__ import annotations
 
-# Use the validation-set for monitoring during training. The test-set must
-# stay untouched until the final measurement, otherwise picking a snapshot
-# based on it leaks the test-set into model selection.
-X_valid = dataset['valid_images']
-Y_valid = dataset['valid_labels']
+import keras
+import numpy as np
+from keras import layers
 
-# Real-time data preprocessing
-img_prep = ImagePreprocessing()
-img_prep.add_featurewise_zero_center()
-img_prep.add_featurewise_stdnorm()
+from project_cnn.layers import LocalResponseNormalization
 
-# Real-time data augmentation
-img_aug = ImageAugmentation()
-img_aug.add_random_flip_leftright()
-img_aug.add_random_rotation(max_angle=25.)
-
-# Convolutional network building
-network = input_data(shape=[None, 32, 32, 3],
-                     data_preprocessing=img_prep,
-                     data_augmentation=img_aug,
-                     name='input')
-
-# 1st layer
-conv1_3_3 = conv_2d(network, 32, 3, activation='relu', name='conv1_3_3')
-pool1_3_3 = max_pool_2d(conv1_3_3, 2)
-pool1_3_3 = local_response_normalization(pool1_3_3)
-
-# 2nd layer
-# incpetion2a
-inception2a_1_1 = conv_2d(pool1_3_3, 64, 1, activation='relu', name='inception2a_1_1')
-
-# inpcetion2b
-inception2b_3_3_reduce = conv_2d(pool1_3_3, 64, 1, activation='relu', name='inception2b_3_3_reduce')
-inception2b_3_3 = conv_2d(inception2b_3_3_reduce, 32, 3, activation='relu', name='inception2b_3_3')
-
-# inception2c
-inception2c_5_5_reduce = conv_2d(pool1_3_3, 64, 1, activation='relu', name='inception2c_5_5_reduce')
-inception2c_5_5 = conv_2d(inception2c_5_5_reduce, 32, 5, activation='relu', name='inception2c_5_5')
-
-# inception2d
-inception2d_pool = max_pool_2d(pool1_3_3, kernel_size=3, strides=1, name='inception2d_pool')
-inception2d_pool_1_1 = conv_2d(inception2d_pool, 32, 1, activation='relu', name='inception2d_pool_1_1')
-
-# inception2_output
-inception2_output = merge([inception2a_1_1, inception2b_3_3, inception2c_5_5, inception2d_pool_1_1],
-                          mode='concat', axis=3)
-
-# 3rd layer
-# incpetion3a
-inception3a_1_1 = conv_2d(inception2_output, 64, 1, activation='relu', name='inception3a_1_1')
-
-# inpcetion3b
-inception3b_3_3_reduce = conv_2d(inception2_output, 64, 1, activation='relu', name='inception3b_3_3_reduce')
-inception3b_3_3 = conv_2d(inception3b_3_3_reduce, 32, 3, activation='relu', name='inception3b_3_3')
-
-# inception3c
-inception3c_5_5_reduce = conv_2d(inception2_output, 64, 1, activation='relu', name='inception3c_5_5_reduce')
-inception3c_5_5 = conv_2d(inception3c_5_5_reduce, 32, 5, activation='relu', name='inception3c_5_5')
-
-# inception3d
-inception3d_pool = max_pool_2d(inception2_output, kernel_size=3, strides=1, name='inception3d_pool')
-inception3d_pool_1_1 = conv_2d(inception3d_pool, 32, 1, activation='relu', name='inception3d_pool_1_1')
-
-# inception3_output
-inception3_output = merge([inception3a_1_1, inception3b_3_3, inception3c_5_5, inception3d_pool_1_1],
-                          mode='concat', axis=3)
+DEFAULT_INPUT_SHAPE: tuple[int, int, int] = (32, 32, 3)
+DEFAULT_NUM_CLASSES = 20
 
 
-# 4th layer
-pool4_7_7 = avg_pool_2d(inception3_output, kernel_size=7, strides=1)
-pool4_7_7 = dropout(pool4_7_7, 0.5)
-loss = fully_connected(pool4_7_7, num_classes, activation='softmax')
+def build_augmentation(max_rotation_degrees: float = 25.0) -> keras.Sequential:
+    """Random flip + rotation, the Keras equivalent of tflearn's ImageAugmentation.
 
-# sgd = tflearn.optimizers.SGD(learning_rate=0.001, lr_decay=0.96, decay_step=100)
+    Augmentation layers are inert at inference time, which is what the tflearn
+    ``ImageAugmentation`` object arranged by hand.
+    """
+    return keras.Sequential(
+        [
+            layers.RandomFlip("horizontal", name="random_flip_leftright"),
+            layers.RandomRotation(max_rotation_degrees / 360.0, name="random_rotation"),
+        ],
+        name="augmentation",
+    )
 
-network = regression(loss, optimizer='momentum',
-                     loss='categorical_crossentropy',
-                     learning_rate=0.001,
-                     name='target')
 
-logdir = 'logs'
-checkpoint_dir = os.path.join(logdir, 'inception_checkpoints')
-if not os.path.exists(logdir):
-    os.mkdir(logdir)
-if not os.path.exists(checkpoint_dir):
-    os.mkdir(checkpoint_dir)
-checkpoint_path = os.path.join(checkpoint_dir, "checkpoint")
+def build_normalization(train_images: np.ndarray | None = None) -> layers.Normalization:
+    """Feature-wise zero-centre and unit-variance, as tflearn's ImagePreprocessing did.
 
-# Train using classifier
-model = tflearn.DNN(network,
-                    tensorboard_verbose=2,
-                    checkpoint_path=checkpoint_path,
-                    tensorboard_dir=logdir)
+    Pass the training images to adapt the statistics; leave them out to get an
+    un-adapted layer (useful in tests, and adaptable later).
+    """
+    normalization = layers.Normalization(name="normalization")
 
-model.fit({'input': X}, {'target': Y},
-          validation_set=({'input': X_valid}, {'target': Y_valid}),
-          n_epoch=1000,
-          shuffle=True,
-          show_metric=True,
-          batch_size=96,
-          snapshot_step=500,
-          snapshot_epoch=False,
-          run_id='inception_model')
+    if train_images is not None:
+        normalization.adapt(train_images)
 
-model.save('logs/inception_model_save')
+    return normalization
+
+
+def inception_block(x, name: str, reduce_filters: int = 64, branch_filters: int = 32):
+    """One inception block: 1x1 / 1x1->3x3 / 1x1->5x5 / pool->1x1, concatenated."""
+    branch_1_1 = layers.Conv2D(
+        reduce_filters, 1, padding="same", activation="relu", name=f"{name}a_1_1"
+    )(x)
+
+    branch_3_3 = layers.Conv2D(
+        reduce_filters, 1, padding="same", activation="relu", name=f"{name}b_3_3_reduce"
+    )(x)
+    branch_3_3 = layers.Conv2D(
+        branch_filters, 3, padding="same", activation="relu", name=f"{name}b_3_3"
+    )(branch_3_3)
+
+    branch_5_5 = layers.Conv2D(
+        reduce_filters, 1, padding="same", activation="relu", name=f"{name}c_5_5_reduce"
+    )(x)
+    branch_5_5 = layers.Conv2D(
+        branch_filters, 5, padding="same", activation="relu", name=f"{name}c_5_5"
+    )(branch_5_5)
+
+    branch_pool = layers.MaxPooling2D(3, strides=1, padding="same", name=f"{name}d_pool")(x)
+    branch_pool = layers.Conv2D(
+        branch_filters, 1, padding="same", activation="relu", name=f"{name}d_pool_1_1"
+    )(branch_pool)
+
+    return layers.Concatenate(axis=-1, name=f"{name}_output")(
+        [branch_1_1, branch_3_3, branch_5_5, branch_pool]
+    )
+
+
+def build_inception(
+    input_shape: tuple[int, int, int] = DEFAULT_INPUT_SHAPE,
+    num_classes: int = DEFAULT_NUM_CLASSES,
+    dropout_rate: float = 0.5,
+    train_images: np.ndarray | None = None,
+    augment: bool = True,
+    name: str = "inception",
+) -> keras.Model:
+    """Build the two-block inception network.
+
+    :param train_images: if given, the normalization layer is adapted to these
+        statistics; otherwise it passes the input through unchanged until
+        someone calls ``adapt``.
+    :param augment: include the random flip/rotation layers.  They are inert at
+        inference time either way; turning them off keeps tests deterministic.
+    """
+    if num_classes < 1:
+        raise ValueError("num_classes must be at least 1")
+
+    inputs = keras.Input(shape=input_shape, name="input")
+
+    x = build_normalization(train_images)(inputs)
+    if augment:
+        x = build_augmentation()(x)
+
+    x = layers.Conv2D(32, 3, padding="same", activation="relu", name="conv1_3_3")(x)
+    x = layers.MaxPooling2D(2, name="pool1_3_3")(x)
+    x = LocalResponseNormalization(name="lrn1")(x)
+
+    x = inception_block(x, name="inception2")
+    x = inception_block(x, name="inception3")
+
+    x = layers.AveragePooling2D(7, strides=1, padding="same", name="pool4_7_7")(x)
+    x = layers.Dropout(dropout_rate, name="dropout")(x)
+    x = layers.Flatten(name="flatten")(x)
+    outputs = layers.Dense(num_classes, activation="softmax", name="target")(x)
+
+    return keras.Model(inputs=inputs, outputs=outputs, name=name)

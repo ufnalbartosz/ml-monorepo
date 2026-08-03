@@ -137,13 +137,11 @@ def plot_confusion_matrix(cls_pred, dataset):
     print("".join(class_numbers))
 
 
-def plot_conv_weights(weights, session, input_channel=0, filename='conv_weights.png'):
-    # Assume weights are TensorFlow ops for 4-dim variables
-    # e.g. weights_conv1 or weights_conv2.
-
-    # Retrieve the values of the weight-variables from TensorFlow.
-    # A feed-dict is not necessary because nothing is calculated.
-    w = session.run(weights)
+def plot_conv_weights(weights, input_channel=0, filename='conv_weights.png'):
+    # Assume weights is the 4-dim kernel of a convolutional layer, e.g. the
+    # result of tools.get_weights_variable(model, 'conv1'). Under TF2 the
+    # variable already holds its value, so there is no session to run.
+    w = np.asarray(weights)
 
     # Print statistics for the weights.
     print("Min:  {0:.5f}, Max:   {1:.5f}".format(w.min(), w.max()))
@@ -164,7 +162,7 @@ def plot_conv_weights(weights, session, input_channel=0, filename='conv_weights.
     num_grids = int(math.ceil(math.sqrt(num_filters)))
 
     # Create figure with a grid of sub-plots.
-    fig, axes = plt.subplots(num_grids, num_grids)
+    fig, axes = plt.subplots(num_grids, num_grids, squeeze=False)
 
     # Plot all the filter-weights.
     for i, ax in enumerate(axes.flat):
@@ -193,17 +191,11 @@ def plot_conv_weights(weights, session, input_channel=0, filename='conv_weights.
     plt.close(fig)
 
 
-def plot_layer_output(layer_output, image, x, session, filename='layer_output.png'):
-    # Assume layer_output is a 4-dim tensor
-    # e.g. output_conv1 or output_conv2.
-
-    # Create a feed-dict which holds the single input image.
-    # Note that TensorFlow needs a list of images,
-    # so we just create a list with this one image.
-    feed_dict = {x: [image]}
-
-    # Retrieve the output of the layer after inputting this image.
-    values = session.run(layer_output, feed_dict=feed_dict)
+def plot_layer_output(layer_output_model, image, filename='layer_output.png'):
+    # layer_output_model maps the network input to one layer's activations,
+    # e.g. the result of tools.get_layer_output(model, 'conv1'). Keras needs a
+    # batch, so wrap the single image in a list.
+    values = np.asarray(layer_output_model.predict(np.asarray([image]), verbose=0))
 
     # Get the lowest and highest values.
     # This is used to correct the colour intensity across
@@ -219,7 +211,7 @@ def plot_layer_output(layer_output, image, x, session, filename='layer_output.pn
     num_grids = int(math.ceil(math.sqrt(num_images)))
 
     # Create figure with a grid of sub-plots.
-    fig, axes = plt.subplots(num_grids, num_grids)
+    fig, axes = plt.subplots(num_grids, num_grids, squeeze=False)
 
     # Plot all the filter-weights.
     for i, ax in enumerate(axes.flat):
@@ -246,22 +238,19 @@ def plot_layer_output(layer_output, image, x, session, filename='layer_output.pn
     plt.close(fig)
 
 
-def plot_distorted_image(image, cls_true, distorted_images,
-                         x, session, dataset):
-    # Repeat the input image 9 times.
+def plot_distorted_image(image, cls_true, distort, dataset,
+                         filename='distorted_image.png'):
+    # `distort` is a callable that applies the random pre-processing to a
+    # batch, e.g. tools.PreProcessing(...) called with training=True. Feeding
+    # it nine copies of the same image shows nine different distortions.
     image_duplicates = np.repeat(image[np.newaxis, :, :, :], 9, axis=0)
 
-    # Create a feed-dict for TensorFlow.
-    feed_dict = {x: image_duplicates}
-
-    # Calculate only the pre-processing of the TensorFlow graph
-    # which distorts the images in the feed-dict.
-    result = session.run(distorted_images, feed_dict=feed_dict)
+    result = np.asarray(distort(image_duplicates))
 
     # Plot the images.
     class_names = dataset['class_names']
     plot_images(images=result, cls_true=np.repeat(cls_true, 9),
-                class_names=class_names, filename='distorted_image.png')
+                class_names=class_names, filename=filename)
 
 
 def plot_image(image, filename='image.png'):
