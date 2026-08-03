@@ -3,7 +3,13 @@ name = "ml-monorepo"
 version = "0.1.0"
 description = "Consolidated machine learning and numerical optimization projects"
 requires-python = ">=3.12"
-dependencies = ["nadaraya-watson", "pure-alexnet", "project-cnn", "dfp-formula-project"]
+dependencies = [
+    "nadaraya-watson",
+    "pure-alexnet",
+    "project-cnn",
+    "dfp-formula-project",
+    "idv-risk",
+]
 
 [tool.uv]
 package = false
@@ -13,9 +19,16 @@ nadaraya-watson = { workspace = true }
 pure-alexnet = { workspace = true }
 project-cnn = { workspace = true }
 dfp-formula-project = { workspace = true }
+idv-risk = { workspace = true }
 
 [tool.uv.workspace]
-members = ["packages/nadaraya-watson", "packages/pure-alexnet", "packages/project-cnn", "packages/dfp-formula-project"]
+members = [
+    "packages/nadaraya-watson",
+    "packages/pure-alexnet",
+    "packages/project-cnn",
+    "packages/dfp-formula-project",
+    "packages/idv-risk",
+]
 
 [dependency-groups]
 dev = [
