@@ -52,7 +52,14 @@ libraries and fails on a bare headless machine.
 
 ## Further reading
 
-[`docs/modern-vision-guide.md`](docs/modern-vision-guide.md) — how the models
-in this repo relate to 2026 computer vision, a four-step path for closing the
-gap using this repo's own data-set, and where classical image processing is
-still the right tool.
+- [`docs/modern-vision-guide.md`](docs/modern-vision-guide.md) — how the models
+  in this repo relate to 2026 computer vision, a four-step path for closing the
+  gap using this repo's own data-set, and where classical image processing is
+  still the right tool.
+- [`docs/model-development-pipeline.md`](docs/model-development-pipeline.md) —
+  what a production ML pipeline looks like end to end, which stages this repo
+  already has, and what to add next.
+- [`docs/identity-verification-models.md`](docs/identity-verification-models.md)
+  — state of the art in identity verification and fraud detection: matchers,
+  presentation and injection attack detection, evaluation, and the regulatory
+  constraints that shape the architecture.
