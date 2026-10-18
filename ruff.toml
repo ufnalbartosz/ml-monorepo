@@ -9,6 +9,7 @@ ignore = ["E501"]
 # src/ layouts hide the workspace packages from ruff's own detection.
 known-first-party = [
     "dfp_formula_project",
+    "idv_risk",
     "nadaraya_watson",
     "project_cnn",
     "pure_alexnet",
