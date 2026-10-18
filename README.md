@@ -60,3 +60,6 @@ libraries and fails on a bare headless machine.
   rationale behind the risk-fusion engine: why fusion rather than another
   biometric model, which monotone constraints are safe, and how the evaluation
   is built to report unfairness rather than noise.
+- [`docs/python-data-stack.md`](docs/python-data-stack.md) — a learning roadmap
+  for the Python data stack, with every topic anchored to code that already
+  exists in this repo and a named gap to close.
