@@ -4,5 +4,6 @@
 # Oxford 17-category flower dataset, downloaded by dataset.py at runtime
 17flowers/
 
-# tflearn model checkpoints written by model.py
+# Keras checkpoints and saved models written by train.py
 saves/
+checkpoints/
