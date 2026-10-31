@@ -23,11 +23,13 @@
 
 ## Lint and tests
 
-- Before every commit: `uv run ruff check .` and
-  `uv run pytest packages/<changed-package>`.
-- `ruff format` is not enforced yet: 10 files would be reformatted. Don't
-  reformat unrelated files in a feature commit; a repo-wide format is its own
-  `style:` commit.
+- Before every commit: `uv run ruff format .`, `uv run ruff check .` and
+  `uv run pytest packages/<changed-package>`. The whole repo is ruff-formatted;
+  `uv run ruff format --check .` must pass.
+- Use the ruff version pinned in `uv.lock` (`uv run ruff`), not a newer global
+  one, so formatting doesn't drift between machines.
+- Formatting churn in files you didn't otherwise change goes in its own `style:`
+  commit, never mixed into a feature commit.
 - Ruff config lives only in the root `ruff.toml`. No per-package configs; add
   per-file ignores only with a comment explaining why.
 - Tests are offline: no network, no full-size models, no real datasets. Inject
