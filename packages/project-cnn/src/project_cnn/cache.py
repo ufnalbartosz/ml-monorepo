@@ -55,7 +55,7 @@ def cache(cache_path, fn, *args, **kwargs):
     # If the cache-file exists.
     if os.path.exists(cache_path):
         # Load the cached data from the file.
-        with open(cache_path, mode='rb') as file:
+        with open(cache_path, mode="rb") as file:
             obj = pickle.load(file)
 
         print("- Data loaded from cache-file: " + cache_path)
@@ -66,7 +66,7 @@ def cache(cache_path, fn, *args, **kwargs):
         obj = fn(*args, **kwargs)
 
         # Save the data to a cache-file.
-        with open(cache_path, mode='wb') as file:
+        with open(cache_path, mode="wb") as file:
             pickle.dump(obj, file)
 
         print("- Data saved to cache-file: " + cache_path)
@@ -99,13 +99,13 @@ def convert_numpy2pickle(in_path, out_path):
     data = np.load(in_path)
 
     # Save the data using pickle.
-    with open(out_path, mode='wb') as file:
+    with open(out_path, mode="wb") as file:
         pickle.dump(data, file)
 
 
 ########################################################################
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # This is a short example of using a cache-file.
 
     # This is the function that will only get called if the result
@@ -115,15 +115,14 @@ if __name__ == '__main__':
     def expensive_function(a, b):
         return a * b
 
-    print('Computing expensive_function() ...')
+    print("Computing expensive_function() ...")
 
     # Either load the result from a cache-file if it already exists,
     # otherwise calculate expensive_function(a=123, b=456) and
     # save the result to the cache-file for next time.
-    result = cache(cache_path='cache_expensive_function.pkl',
-                   fn=expensive_function, a=123, b=456)
+    result = cache(cache_path="cache_expensive_function.pkl", fn=expensive_function, a=123, b=456)
 
-    print('result =', result)
+    print("result =", result)
 
     # Newline.
     print()
@@ -140,17 +139,16 @@ if __name__ == '__main__':
             self.result = c * d
 
         def print_result(self):
-            print('c =', self.c)
-            print('d =', self.d)
-            print('result = c * d =', self.result)
+            print("c =", self.c)
+            print("d =", self.d)
+            print("result = c * d =", self.result)
 
-    print('Creating object from ExpensiveClass() ...')
+    print("Creating object from ExpensiveClass() ...")
 
     # Either load the object from a cache-file if it already exists,
     # otherwise make an object-instance ExpensiveClass(c=123, d=456)
     # and save the object to the cache-file for the next time.
-    obj = cache(cache_path='cache_ExpensiveClass.pkl',
-                fn=ExpensiveClass, c=123, d=456)
+    obj = cache(cache_path="cache_ExpensiveClass.pkl", fn=ExpensiveClass, c=123, d=456)
 
     obj.print_result()
 

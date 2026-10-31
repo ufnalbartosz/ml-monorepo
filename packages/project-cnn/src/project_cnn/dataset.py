@@ -58,7 +58,7 @@ def one_hot_encoded(class_numbers, num_classes=None):
 
 
 class DataSet:
-    def __init__(self, in_dir, exts='.jpg'):
+    def __init__(self, in_dir, exts=".jpg"):
         """
         Create a data-set consisting of the filenames in the given directory
         and sub-dirs that match the given filename-extensions.
@@ -170,7 +170,7 @@ class DataSet:
                 # Test-set.
 
                 # Get all the valid filenames in the sub-dir named 'test'.
-                filenames_test = self._get_filenames(os.path.join(current_dir, 'test'))
+                filenames_test = self._get_filenames(os.path.join(current_dir, "test"))
 
                 # Append them to the list of all filenames for the test-set.
                 self.filenames_test.extend(filenames_test)
@@ -246,10 +246,11 @@ class DataSet:
         and the class-numbers as one-hot encoded arrays.
         """
 
-        return list(self.get_paths()), \
-               np.asarray(self.class_numbers), \
-               one_hot_encoded(class_numbers=self.class_numbers,
-                               num_classes=self.num_classes)
+        return (
+            list(self.get_paths()),
+            np.asarray(self.class_numbers),
+            one_hot_encoded(class_numbers=self.class_numbers, num_classes=self.num_classes),
+        )
 
     def get_test_set(self):
         """
@@ -258,10 +259,11 @@ class DataSet:
         and the class-numbers as one-hot encoded arrays.
         """
 
-        return list(self.get_paths(test=True)), \
-               np.asarray(self.class_numbers_test), \
-               one_hot_encoded(class_numbers=self.class_numbers_test,
-                               num_classes=self.num_classes)
+        return (
+            list(self.get_paths(test=True)),
+            np.asarray(self.class_numbers_test),
+            one_hot_encoded(class_numbers=self.class_numbers_test, num_classes=self.num_classes),
+        )
 
 
 ########################################################################
@@ -295,8 +297,7 @@ def load_cached(cache_path, in_dir):
     # If the object-instance for DataSet(in_dir=data_dir) already
     # exists in the cache-file then reload it, otherwise create
     # an object instance and save it to the cache-file for next time.
-    dataset = cache(cache_path=cache_path,
-                    fn=DataSet, in_dir=in_dir)
+    dataset = cache(cache_path=cache_path, fn=DataSet, in_dir=in_dir)
 
     return dataset
 

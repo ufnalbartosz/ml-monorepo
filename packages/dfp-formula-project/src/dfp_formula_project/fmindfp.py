@@ -3,10 +3,15 @@ import numpy
 from numpy import asarray, inf, isinf
 import numpy as np
 
-from scipy.optimize._optimize import (_epsilon, approx_fprime,
-                                      _check_unknown_options, vecnorm,
-                                      _LineSearchError, _line_search_wolfe12,
-                                      OptimizeResult)
+from scipy.optimize._optimize import (
+    _epsilon,
+    approx_fprime,
+    _check_unknown_options,
+    vecnorm,
+    _LineSearchError,
+    _line_search_wolfe12,
+    OptimizeResult,
+)
 
 
 def wrap_function(function, args):
@@ -25,44 +30,81 @@ def wrap_function(function, args):
 
     return ncalls, function_wrapper
 
+
 _status_message = {
-    'maxiter' : "Maksymalna liczba iteracji zostala oiagnieta",
-    'success' : "Wykonanie algorytmu zakonczylo sie powodzeniem",
-    'pr_loss' : "Napotkano nieznany blad wziazany z utrata precyzji"
+    "maxiter": "Maksymalna liczba iteracji zostala oiagnieta",
+    "success": "Wykonanie algorytmu zakonczylo sie powodzeniem",
+    "pr_loss": "Napotkano nieznany blad wziazany z utrata precyzji",
 }
 
-def fmindfp(f, x0, fprime=None, args=(), gtol=1e-5, xtol=1e-09, fxtol=1e-09, norm=inf,
-              epsilon=_epsilon, maxiter=None, full_output=False, disp=False,
-              retall=True, callback=None):
 
-    opts = {'gtol': gtol,
-            'xtol': xtol,
-            'fxtol': fxtol,
-            'norm': norm,
-            'eps': epsilon,
-            'disp': disp,
-            'maxiter': maxiter,
-            'return_all': retall}
+def fmindfp(
+    f,
+    x0,
+    fprime=None,
+    args=(),
+    gtol=1e-5,
+    xtol=1e-09,
+    fxtol=1e-09,
+    norm=inf,
+    epsilon=_epsilon,
+    maxiter=None,
+    full_output=False,
+    disp=False,
+    retall=True,
+    callback=None,
+):
+
+    opts = {
+        "gtol": gtol,
+        "xtol": xtol,
+        "fxtol": fxtol,
+        "norm": norm,
+        "eps": epsilon,
+        "disp": disp,
+        "maxiter": maxiter,
+        "return_all": retall,
+    }
 
     res = _minimize(f, x0, args, fprime, callback=callback, **opts)
 
     if full_output:
-        retlist = (res['x'], res['fun'], res['jac'], res['hess_inv'],
-                   res['nfev'], res['njev'], res['status'], res['lst'])
+        retlist = (
+            res["x"],
+            res["fun"],
+            res["jac"],
+            res["hess_inv"],
+            res["nfev"],
+            res["njev"],
+            res["status"],
+            res["lst"],
+        )
         if retall:
-            retlist += (res['allvecs'], )
+            retlist += (res["allvecs"],)
         return retlist
     else:
         if retall:
-            return res['x'], res['allvecs'], res['lst']
+            return res["x"], res["allvecs"], res["lst"]
         else:
-            return res['x'], res['lst']
+            return res["x"], res["lst"]
 
 
-def _minimize(fun, x0, args=(), jac=None, callback=None,
-                   gtol=1e-5, fxtol=1e-09, xtol=1e-09, norm=inf,
-                   eps=_epsilon, maxiter=None, disp=False,
-                   return_all=False, **unknown_options):
+def _minimize(
+    fun,
+    x0,
+    args=(),
+    jac=None,
+    callback=None,
+    gtol=1e-5,
+    fxtol=1e-09,
+    xtol=1e-09,
+    norm=inf,
+    eps=_epsilon,
+    maxiter=None,
+    disp=False,
+    return_all=False,
+    **unknown_options,
+):
 
     _check_unknown_options(unknown_options)
     f = fun
@@ -78,7 +120,6 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
     func_calls, f = wrap_function(f, args)
 
     grad_calls, myfprime = wrap_function(approx_fprime, (f, epsilon))
-
 
     gfk = myfprime(x0)
     k = 0
@@ -99,12 +140,14 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
     while (gnorm > gtol) and (xnorm > xtol) and (fx > fxtol) and (k < maxiter):
         pk = -numpy.dot(Hk, gfk)
         try:
-            alpha_k, fc, gc, old_fval, old_old_fval, gfkp1 = \
-                     _line_search_wolfe12(f, myfprime, xk, pk, gfk,
-                                          old_fval, old_old_fval)
+            alpha_k, fc, gc, old_fval, old_old_fval, gfkp1 = _line_search_wolfe12(
+                f, myfprime, xk, pk, gfk, old_fval, old_old_fval
+            )
         except _LineSearchError:
             # search failed to find a better solution.
-            print_lst.append("Przeszukiwanie liniowe zawiodlo lub nie moze osiagnac lepszego rozwiazania")
+            print_lst.append(
+                "Przeszukiwanie liniowe zawiodlo lub nie moze osiagnac lepszego rozwiazania"
+            )
             warnflag = 2
             break
 
@@ -127,16 +170,16 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
         k += 1
 
         if disp:
-            print_ = ('Iter: ' + str(k) + '\n')
-            print_ += ('x: ' + str(xk) + '\n')
-            print_ += ('f(x): ' + str(f(xk)) + '\n') #zmiana na fx
-            print_ +=('gtol: ' + str(gnorm) + '\n')
-            print_ +=('xtol: ' + str(xnorm) + '\n')
-            print_ +=('fxtol: ' + str(fx) + '\n')
+            print_ = "Iter: " + str(k) + "\n"
+            print_ += "x: " + str(xk) + "\n"
+            print_ += "f(x): " + str(f(xk)) + "\n"  # zmiana na fx
+            print_ += "gtol: " + str(gnorm) + "\n"
+            print_ += "xtol: " + str(xnorm) + "\n"
+            print_ += "fxtol: " + str(fx) + "\n"
             print_lst.append(print_)
 
         gnorm = vecnorm(gfk, ord=norm)
-        if (gnorm <= gtol):
+        if gnorm <= gtol:
             break
 
         if not numpy.isfinite(old_fval):
@@ -158,8 +201,7 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
                 print_lst.append("Dzielenie przez zero!!")
         A1 = I - sk[:, numpy.newaxis] * yk[numpy.newaxis, :] * rhok
         A2 = I - yk[:, numpy.newaxis] * sk[numpy.newaxis, :] * rhok
-        Hk = numpy.dot(A1, numpy.dot(Hk, A2)) + (rhok * sk[:, numpy.newaxis] *
-                                                 sk[numpy.newaxis, :])
+        Hk = numpy.dot(A1, numpy.dot(Hk, A2)) + (rhok * sk[:, numpy.newaxis] * sk[numpy.newaxis, :])
 
     fval = old_fval
     if np.isnan(fval):
@@ -169,42 +211,51 @@ def _minimize(fun, x0, args=(), jac=None, callback=None,
         warnflag = 2
 
     if warnflag == 2:
-        msg = _status_message['pr_loss']
+        msg = _status_message["pr_loss"]
         if disp:
-            print_ = ("Ostrzezenie: " + msg)
-            print_ += ("         Wartosc funkcji celu: %f" % fval)
-            print_ += ("         Iteracje:  %d" % k)
-            print_ += ("         Wywolania funkcji: %d" % func_calls[0])
-            print_ += ("         Wywolania gradientu: %d" % grad_calls[0])
+            print_ = "Ostrzezenie: " + msg
+            print_ += "         Wartosc funkcji celu: %f" % fval
+            print_ += "         Iteracje:  %d" % k
+            print_ += "         Wywolania funkcji: %d" % func_calls[0]
+            print_ += "         Wywolania gradientu: %d" % grad_calls[0]
 
     elif k >= maxiter:
         warnflag = 1
-        msg = _status_message['maxiter']
+        msg = _status_message["maxiter"]
         if disp:
-            print_ = ("Ostrzerzenie: " + msg)
-            print_ += ("         Wartosc funkcji celu: %f" % fval)
-            print_ += ("         Iteracje:  %d" % k)
-            print_ += ("         Wywolania funkcji: %d" % func_calls[0])
-            print_ += ("         Wywolania gradientu: %d" % grad_calls[0])
+            print_ = "Ostrzerzenie: " + msg
+            print_ += "         Wartosc funkcji celu: %f" % fval
+            print_ += "         Iteracje:  %d" % k
+            print_ += "         Wywolania funkcji: %d" % func_calls[0]
+            print_ += "         Wywolania gradientu: %d" % grad_calls[0]
             print_lst.append(print_)
     else:
-        msg = _status_message['success']
+        msg = _status_message["success"]
         if disp:
-            print_ = (msg + '\n')
-            print_ += ("         Wartosc funkcji celu: %f" % fval)
-            print_ += ("         Iteracje:  %d" % k)
-            print_ += ("         Wywolania funkcji: %d" % func_calls[0])
-            print_ += ("         Wywolania gradientu: %d" % grad_calls[0])
+            print_ = msg + "\n"
+            print_ += "         Wartosc funkcji celu: %f" % fval
+            print_ += "         Iteracje:  %d" % k
+            print_ += "         Wywolania funkcji: %d" % func_calls[0]
+            print_ += "         Wywolania gradientu: %d" % grad_calls[0]
             print_lst.append(print_)
 
     [print(line) for line in print_lst]
 
-    result = OptimizeResult(fun=fval,lst=print_lst, jac=gfk, hess_inv=Hk, nfev=func_calls[0],
-                            njev=grad_calls[0], status=warnflag,
-                            success=(warnflag == 0), message=msg, x=xk,
-                            nit=k)
+    result = OptimizeResult(
+        fun=fval,
+        lst=print_lst,
+        jac=gfk,
+        hess_inv=Hk,
+        nfev=func_calls[0],
+        njev=grad_calls[0],
+        status=warnflag,
+        success=(warnflag == 0),
+        message=msg,
+        x=xk,
+        nit=k,
+    )
     if retall:
-        result['allvecs'] = allvecs
+        result["allvecs"] = allvecs
     return result
 
 
@@ -217,10 +268,11 @@ if __name__ == "__main__":
 
     from dfp_formula_project.function import Function
     from dfp_formula_project.test_functions import *
+
     fun = Function(f2)
 
     start = time.time()
     x = fmindfp(fun, x0, maxiter=80, disp=True)
 
     times.append(time.time() - start)
-    algor.append('DFP Quasi-Newton\t')
+    algor.append("DFP Quasi-Newton\t")

@@ -257,6 +257,7 @@ def robust_local_poly(
     odpornosciowe. W odroznieniu od lowess() ponizej nie zmienia okna na
     adaptacyjne - dzieki temu mierzy dokladnie to, co daje sama odpornosc,
     przy tym samym h co w nwkr/local_linear."""
+
     def weight_fn(x0: float, Xa: NDArray[np.float64]) -> NDArray[np.float64]:
         return K((x0 - Xa) / h)
 
@@ -348,7 +349,7 @@ def main() -> None:
         lowess_hat = lowess(x, X, Y, frac=frac, degree=1, n_iter=3)
         ax.plot(x, lowess_hat, lw=1.5, ls="-.", label="LOWESS (odporny)")
 
-        ax.set_title(f"zaklocenia: {noise}, h = 1/{int(1/h)}")
+        ax.set_title(f"zaklocenia: {noise}, h = 1/{int(1 / h)}")
         ax.set_ylim(-3, 3)
         ax.grid(alpha=0.3)
         ax.legend(fontsize=8)
@@ -388,14 +389,18 @@ def main() -> None:
             rows.append((name, mse_of(m_hat)))
 
         rows.append(("LL Epanecznikow", mse_of(local_linear(x, X, Y, h, epanechnikov))))
-        rows.append((
-            "NW + odpornosc (h staly)",
-            mse_of(robust_local_poly(x, X, Y, h, epanechnikov, degree=0, n_iter=3)),
-        ))
-        rows.append((
-            "LL + odpornosc (h staly)",
-            mse_of(robust_local_poly(x, X, Y, h, epanechnikov, degree=1, n_iter=3)),
-        ))
+        rows.append(
+            (
+                "NW + odpornosc (h staly)",
+                mse_of(robust_local_poly(x, X, Y, h, epanechnikov, degree=0, n_iter=3)),
+            )
+        )
+        rows.append(
+            (
+                "LL + odpornosc (h staly)",
+                mse_of(robust_local_poly(x, X, Y, h, epanechnikov, degree=1, n_iter=3)),
+            )
+        )
         rows.append(("LOWESS, span (it=0)", mse_of(lowess(x, X, Y, frac=frac, degree=1, n_iter=0))))
         rows.append(("LOWESS, span (it=3)", mse_of(lowess(x, X, Y, frac=frac, degree=1, n_iter=3))))
 

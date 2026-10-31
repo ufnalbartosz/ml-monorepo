@@ -1,19 +1,20 @@
 #!/usr/bin/env python
 import numpy as np
 import matplotlib.pyplot as plt
-#matplotlib3d
+
+# matplotlib3d
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 
 
-class Figure():
+class Figure:
     def __init__(self, fun, vec, lr=100):
         self.fdim = vec.ndim
         if self.fdim == 2:
             self.fun = fun
 
-            #dodac warunek min max i podawc je do funckji crt_range
-            scale = 1.3;
+            # dodac warunek min max i podawc je do funckji crt_range
+            scale = 1.3
             x = vec[:, 0]
             y = vec[:, 1]
 
@@ -41,29 +42,24 @@ class Figure():
             self.vec = vec
 
         else:
-            print('Dimension not equal 2')
-
+            print("Dimension not equal 2")
 
     def plot_surf_mayavi(self):
         from mayavi import mlab
+
         if self.fdim == 2:
-            mlab.surf(self.x_range, self.y_range, self.z_val, warp_scale='auto')
+            mlab.surf(self.x_range, self.y_range, self.z_val, warp_scale="auto")
             mlab.show()
         else:
-            print('Dimension not equal 2')
-
+            print("Dimension not equal 2")
 
     def plot_contour(self):
         if self.fdim == 2:
+            p = [self.x_range.min(), self.x_range.max(), self.y_range.max(), self.y_range.min()]
+            p2 = [self.x_range.min(), self.x_range.max(), self.y_range.min(), self.y_range.max()]
+            plt.imshow(self.z_val, vmin=self.z_val.min(), vmax=self.z_val.max(), extent=p)
 
-            p = [self.x_range.min(), self.x_range.max(),
-                               self.y_range.max(), self.y_range.min()]
-            p2 = [self.x_range.min(), self.x_range.max(),
-                               self.y_range.min(), self.y_range.max()]
-            plt.imshow(self.z_val, vmin=self.z_val.min(), vmax=self.z_val.max(),
-                       extent=p)
-
-            CS = plt.contour(self.x_range, self.y_range, self.z_val, 15,  colors='k')
+            CS = plt.contour(self.x_range, self.y_range, self.z_val, 15, colors="k")
             plt.clabel(CS, inline=1, fontsize=10)
             x_ = []
             y_ = []
@@ -71,7 +67,7 @@ class Figure():
                 x_.append(i[0])
                 y_.append(i[1])
 
-            plt.plot(x_, y_, color='k')
+            plt.plot(x_, y_, color="k")
             plt.ylabel("x2")
             plt.xlabel("x1")
 
@@ -87,8 +83,7 @@ class Figure():
 
             plt.show()
         else:
-            print('Dimension not equal 2')
-
+            print("Dimension not equal 2")
 
     def calculate_function_values(self):
         X, Y = np.meshgrid(self.x_range, self.y_range)
@@ -97,39 +92,43 @@ class Figure():
         self.x_mesh = X
         self.y_mesh = Y
 
-
     def plot_surf(self):
-        self.ax.plot_surface(self.x_mesh, self.y_mesh, self.z_val,
-                             rstride=1, cstride=1, cmap=cm.coolwarm,
-                             linewidth=0, antialiased=False)
-
-
+        self.ax.plot_surface(
+            self.x_mesh,
+            self.y_mesh,
+            self.z_val,
+            rstride=1,
+            cstride=1,
+            cmap=cm.coolwarm,
+            linewidth=0,
+            antialiased=False,
+        )
 
     def show(self):
-#        fig = plt.figure(figsize=plt.figaspect(0.5)) #twice as wide as it's tall
-#        self.ax = fig.add_subplot(1, 2, 1, projection='3d')
+        #        fig = plt.figure(figsize=plt.figaspect(0.5)) #twice as wide as it's tall
+        #        self.ax = fig.add_subplot(1, 2, 1, projection='3d')
 
-#        self.plot_surf()
+        #        self.plot_surf()
 
-#        self.ax = fig.add_subplot(1, 2, 2)
+        #        self.ax = fig.add_subplot(1, 2, 2)
         self.plot_contour()
         plt.show()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     from dfp_formula_project.function import Function
     from dfp_formula_project.test_functions import *
 
     given_function = t1
     fun = Function(given_function)
 
-
     from dfp_formula_project.fmindfp import fmindfp
+
     x0 = t11
     x = fmindfp(fun, x0, maxiter=10000, disp=True)
 
     vec = x[1]
     vec = np.asanyarray(vec)
-
 
     fig = Figure(fun, vec)
     fig.show()
