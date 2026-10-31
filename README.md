@@ -7,7 +7,7 @@ each independently installable, sharing a single dependency lockfile.
 |---|---|---|
 | `packages/nadaraya-watson` | Nadaraya-Watson kernel regression demo | working |
 | `packages/dfp-formula-project` | DFP quasi-Newton optimizer, Qt GUI, contour plots | working |
-| `packages/pure-alexnet` | AlexNet on the Oxford 17-flowers set, Keras 3 | working |
+| `packages/pure-alexnet` | AlexNet on the Oxford 17-flowers set, Keras 3 | working; PyTorch port planned, see [PLAN.md](packages/pure-alexnet/PLAN.md) |
 | `packages/project-cnn` | Three CNNs on a CIFAR-100 subset, Keras 3 | working |
 | `packages/idv-risk` | XGBoost risk-fusion engine for identity verification | working |
 
