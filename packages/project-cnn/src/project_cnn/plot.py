@@ -1,17 +1,17 @@
 import math
 import matplotlib
+
 # Select a non-interactive backend before pyplot is imported, because the
 # training runs on a headless machine where plt.show() has nothing to
 # draw on. The plots are written to files instead.
-matplotlib.use('Agg')
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
 from sklearn.metrics import confusion_matrix
 
 
-def plot_images(images, cls_true, class_names, cls_pred=None, smooth=True,
-                filename=None):
+def plot_images(images, cls_true, class_names, cls_pred=None, smooth=True, filename=None):
     assert len(images) == len(cls_true)
 
     # Plot at most 9 images, but do not require exactly 9 of them - there
@@ -33,14 +33,14 @@ def plot_images(images, cls_true, class_names, cls_pred=None, smooth=True,
     for i, ax in enumerate(axes.flat):
         # Blank out the sub-plots we have no image for.
         if i >= num_images:
-            ax.axis('off')
+            ax.axis("off")
             continue
 
         # Interpolation type.
         if smooth:
-            interpolation = 'spline16'
+            interpolation = "spline16"
         else:
-            interpolation = 'nearest'
+            interpolation = "nearest"
 
         # Plot image.
         ax.imshow(images[i, :, :, :], interpolation=interpolation)
@@ -55,8 +55,7 @@ def plot_images(images, cls_true, class_names, cls_pred=None, smooth=True,
             # Name of the predicted class.
             cls_pred_name = class_names[cls_pred[i]]
 
-            xlabel = "True: {0}\nPred: {1}".format(
-                cls_true_name, cls_pred_name)
+            xlabel = "True: {0}\nPred: {1}".format(cls_true_name, cls_pred_name)
 
         # Show the classes as the label on the x-axis.
         ax.set_xlabel(xlabel)
@@ -68,7 +67,7 @@ def plot_images(images, cls_true, class_names, cls_pred=None, smooth=True,
     # Write the figure to disk, otherwise all of the work above is
     # thrown away without anything being displayed.
     if filename is not None:
-        fig.savefig(filename, bbox_inches='tight')
+        fig.savefig(filename, bbox_inches="tight")
         print("Saved plot to: " + filename)
 
     # Release the figure, otherwise matplotlib keeps every figure alive
@@ -86,10 +85,10 @@ def plot_example_errors(cls_pred, correct, dataset):
     # is equal to the true class for each image in the test-set.
 
     # Negate the boolean array.
-    incorrect = (correct == False)
+    incorrect = correct == False
     # Get the images from the test-set that have been
     # incorrectly classified.
-    images_test = dataset['test_images']
+    images_test = dataset["test_images"]
     images = images_test[incorrect]
 
     if len(images) == 0:
@@ -100,15 +99,17 @@ def plot_example_errors(cls_pred, correct, dataset):
     cls_pred = cls_pred[incorrect]
 
     # Get the true classes for those images.
-    cls_test = dataset['test_cls']
+    cls_test = dataset["test_cls"]
     cls_true = cls_test[incorrect]
     # Plot the first 9 images.
-    class_names = dataset['class_names']
-    plot_images(images=images[0:9],
-                cls_true=cls_true[0:9],
-                cls_pred=cls_pred[0:9],
-                class_names=class_names,
-                filename='example_errors.png')
+    class_names = dataset["class_names"]
+    plot_images(
+        images=images[0:9],
+        cls_true=cls_true[0:9],
+        cls_pred=cls_pred[0:9],
+        class_names=class_names,
+        filename="example_errors.png",
+    )
 
 
 def plot_confusion_matrix(cls_pred, dataset):
@@ -118,16 +119,18 @@ def plot_confusion_matrix(cls_pred, dataset):
     # all images in the test-set.
 
     # Get the confusion matrix using sklearn.
-    cls_test = dataset['test_cls']
-    cm = confusion_matrix(y_true=cls_test,  # True class for test-set.
-                          y_pred=cls_pred)  # Predicted class.
+    cls_test = dataset["test_cls"]
+    cm = confusion_matrix(
+        y_true=cls_test,  # True class for test-set.
+        y_pred=cls_pred,
+    )  # Predicted class.
 
     # Print the confusion matrix as text.
-    class_names = dataset['class_names']
+    class_names = dataset["class_names"]
     num_classes = len(class_names)
     for i in range(num_classes):
         # Append the class-name to each line.
-        row = ''.join('%04s ' % x for x in cm[i])
+        row = "".join("%04s " % x for x in cm[i])
 
         class_name = " ({:>2}) {}".format(i, class_names[i])
         print(row + class_name)
@@ -137,7 +140,7 @@ def plot_confusion_matrix(cls_pred, dataset):
     print("".join(class_numbers))
 
 
-def plot_conv_weights(weights, input_channel=0, filename='conv_weights.png'):
+def plot_conv_weights(weights, input_channel=0, filename="conv_weights.png"):
     # Assume weights is the 4-dim kernel of a convolutional layer, e.g. the
     # result of tools.get_weights_variable(model, 'conv1'). Under TF2 the
     # variable already holds its value, so there is no session to run.
@@ -174,8 +177,7 @@ def plot_conv_weights(weights, input_channel=0, filename='conv_weights.png'):
             img = w[:, :, input_channel, i]
 
             # Plot image.
-            ax.imshow(img, vmin=-abs_max, vmax=abs_max,
-                      interpolation='nearest', cmap='seismic')
+            ax.imshow(img, vmin=-abs_max, vmax=abs_max, interpolation="nearest", cmap="seismic")
 
         # Remove ticks from the plot.
         ax.set_xticks([])
@@ -183,7 +185,7 @@ def plot_conv_weights(weights, input_channel=0, filename='conv_weights.png'):
 
     # Write the figure to disk, otherwise all of the work above is
     # thrown away without anything being displayed.
-    fig.savefig(filename, bbox_inches='tight')
+    fig.savefig(filename, bbox_inches="tight")
     print("Saved plot to: " + filename)
 
     # Release the figure, otherwise matplotlib keeps every figure alive
@@ -191,7 +193,7 @@ def plot_conv_weights(weights, input_channel=0, filename='conv_weights.png'):
     plt.close(fig)
 
 
-def plot_layer_output(layer_output_model, image, filename='layer_output.png'):
+def plot_layer_output(layer_output_model, image, filename="layer_output.png"):
     # layer_output_model maps the network input to one layer's activations,
     # e.g. the result of tools.get_layer_output(model, 'conv1'). Keras needs a
     # batch, so wrap the single image in a list.
@@ -221,8 +223,7 @@ def plot_layer_output(layer_output_model, image, filename='layer_output.png'):
             img = values[0, :, :, i]
 
             # Plot image.
-            ax.imshow(img, vmin=values_min, vmax=values_max,
-                      interpolation='nearest', cmap='binary')
+            ax.imshow(img, vmin=values_min, vmax=values_max, interpolation="nearest", cmap="binary")
 
         # Remove ticks from the plot.
         ax.set_xticks([])
@@ -230,7 +231,7 @@ def plot_layer_output(layer_output_model, image, filename='layer_output.png'):
 
     # Write the figure to disk, otherwise all of the work above is
     # thrown away without anything being displayed.
-    fig.savefig(filename, bbox_inches='tight')
+    fig.savefig(filename, bbox_inches="tight")
     print("Saved plot to: " + filename)
 
     # Release the figure, otherwise matplotlib keeps every figure alive
@@ -238,8 +239,7 @@ def plot_layer_output(layer_output_model, image, filename='layer_output.png'):
     plt.close(fig)
 
 
-def plot_distorted_image(image, cls_true, distort, dataset,
-                         filename='distorted_image.png'):
+def plot_distorted_image(image, cls_true, distort, dataset, filename="distorted_image.png"):
     # `distort` is a callable that applies the random pre-processing to a
     # batch, e.g. tools.PreProcessing(...) called with training=True. Feeding
     # it nine copies of the same image shows nine different distortions.
@@ -248,12 +248,13 @@ def plot_distorted_image(image, cls_true, distort, dataset,
     result = np.asarray(distort(image_duplicates))
 
     # Plot the images.
-    class_names = dataset['class_names']
-    plot_images(images=result, cls_true=np.repeat(cls_true, 9),
-                class_names=class_names, filename=filename)
+    class_names = dataset["class_names"]
+    plot_images(
+        images=result, cls_true=np.repeat(cls_true, 9), class_names=class_names, filename=filename
+    )
 
 
-def plot_image(image, filename='image.png'):
+def plot_image(image, filename="image.png"):
     # Create figure with sub-plots.
     fig, axes = plt.subplots(1, 2)
 
@@ -262,16 +263,16 @@ def plot_image(image, filename='image.png'):
     ax1 = axes.flat[1]
 
     # Show raw and smoothened images in sub-plots.
-    ax0.imshow(image, interpolation='nearest')
-    ax1.imshow(image, interpolation='spline16')
+    ax0.imshow(image, interpolation="nearest")
+    ax1.imshow(image, interpolation="spline16")
 
     # Set labels.
-    ax0.set_xlabel('Raw')
-    ax1.set_xlabel('Smooth')
+    ax0.set_xlabel("Raw")
+    ax1.set_xlabel("Smooth")
 
     # Write the figure to disk, otherwise all of the work above is
     # thrown away without anything being displayed.
-    fig.savefig(filename, bbox_inches='tight')
+    fig.savefig(filename, bbox_inches="tight")
     print("Saved plot to: " + filename)
 
     # Release the figure, otherwise matplotlib keeps every figure alive
